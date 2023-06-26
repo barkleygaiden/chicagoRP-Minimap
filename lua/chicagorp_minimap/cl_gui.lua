@@ -50,7 +50,8 @@ local function CreateOrigin(vect)
 end
 
 -- Cave mode (run trace to ceiling if not outside)
--- Rewrite mouse drag handler
+-- Zoom functionality
+-- Translating coordinates from Minimap panel to real world, and vise versa
 
 local function MinimapPanel(parent)
 	if !IsValid(parent) then return end
@@ -61,9 +62,11 @@ local function MinimapPanel(parent)
 	panel:Dock(BOTTOM)
 	panel:SetCursor("hand")
 
-	CreateOrigin(ply:GetPos())
-	panel.originX = plyPos.x
-	panel.originY = plyPos.y
+	function panel:Init()
+		CreateOrigin(ply:GetPos())
+		self.originX = plyPos.x
+		self.originY = plyPos.y
+	end
 
 	function panel:Paint(w, h)
 		local x, y = self:GetPos()
@@ -86,6 +89,8 @@ local function MinimapPanel(parent)
 	function panel:OnMousePressed(mousecode)
 		if mousecode != MOUSE_FIRST then return end
 
+		self.cursorX, self.cursorY = input.GetCursorPos() -- Position before dragging starts
+
 		self:MouseCapture(true)
 		self:CaptureMouse()
 	end
@@ -95,17 +100,14 @@ local function MinimapPanel(parent)
 	end
 
 	function panel:CaptureMouse()
-		local x, y = input.GetCursorPos()
-		local dx = x - self.lastX
-		local dy = y - self.lastY
-		local centerx, centery = self:LocalToScreen(self:GetWide() * 0.5, self:GetTall() * 0.5)
+		local x, y = input.GetCursorPos() -- New cursor position
+		local newX = x - self.originX -- Gets new horizontal value
+		local newY = y - self.originY -- Gets new vertical value
 
-		input.SetCursorPos(centerx, centery)
-		self.lastX = centerx
-		self.lastY = centery
+		cameraOrigin.x = cameraOrigin.x + newX -- Moves origin
+		cameraOrigin.y = cameraOrigin.y + newY -- Moves origin
 
-		cameraOrigin.x = cameraOrigin.x + dx
-		cameraOrigin.y = cameraOrigin.y + dy
+		input.SetCursorPos(self.originX, self.originY) -- Recenters cursor at the original position
 	end
 
 	return panel

@@ -1,17 +1,14 @@
 AddCSLuaFile()
 
-if CLIENT then
-    include("chicagorp_minimap/cl_meta.lua")
-else
-    AddCSLuaFile("chicagorp_minimap/cl_meta.lua")
-end
+AddCSLuaFile("chicagorp_minimap/sh_meta.lua")
+include("chicagorp_minimap/sh_meta.lua")
 
 local files = file.Find("chicagorp_minimap/*.lua", "LUA")
 
 for i = 1, #files do
     local f = files[i]
 
-    if f == "cl_meta.lua" then continue end
+    if f == "sh_meta.lua" then continue end
 
     if string.Left(f, 3) == "sv_" then
         if SERVER then 
