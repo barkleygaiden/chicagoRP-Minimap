@@ -9,6 +9,12 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
+local function ResetVector(vect)
+	vect.x = 0
+	vect.y = 0
+	vect.z = 0
+end
+
 local function MinimapFrame()
     if IsValid(OpenMotherFrame) then OpenMotherFrame:Close() return end
     if !IsValid(ply) then return end
@@ -40,7 +46,6 @@ local function MinimapFrame()
 end
 
 local cameraOrigin = Vector(0, 0, 0)
-local cameraAngle = Angle(-90, 0, 0)
 local plyPos = Vector(0, 0, 0)
 local originAdd = Vector(0, 10, 0)
 
@@ -49,9 +54,25 @@ local function CreateOrigin(vect)
 	cameraOrigin = plyPos + originAdd
 end
 
+local endPos = Vector(0, 0, -32768)
+
+local function GetCursorCoordinate(origin) -- STILL does not solve the problem of how to translate cursor position to world position
+	local tr = {}
+	tr.start = origin
+	tr.endpos = endPos
+
+	local trace = util.TraceLine(tr)
+
+	return trace.endpos
+end
+
+-- Add ortho to render.RenderView
+-- Zoom functionality (somewhat done, needs to be rewritten to use ortho)
+-- Translating coordinates from Minimap panel to real world, and vise versa (kinda done, test ingame)
 -- Cave mode (run trace to ceiling if not outside)
--- Zoom functionality
--- Translating coordinates from Minimap panel to real world, and vise versa
+
+local cameraAngle = Angle(-90, 0, 0)
+local worldPosition = Vector(0, 0, 0)
 
 local function MinimapPanel(parent)
 	if !IsValid(parent) then return end
@@ -63,14 +84,15 @@ local function MinimapPanel(parent)
 	panel:SetCursor("hand")
 
 	function panel:Init()
-		CreateOrigin(ply:GetPos())
+		local plyPos = ply:GetPos()
+
+		CreateOrigin(plyPos)
 		self.originX = plyPos.x
 		self.originY = plyPos.y
 	end
 
 	function panel:Paint(w, h)
 		local x, y = self:GetPos()
-		local plyPos = ply:GetPos()
 
 		local old = DisableClipping(true) -- Avoid issues introduced by the natural clipping of Panel rendering
 		render.SetBlend(0)
@@ -78,6 +100,7 @@ local function MinimapPanel(parent)
 		render.RenderView({
 			origin = cameraOrigin,
 			angles = cameraAngle,
+			drawviewmodel = false,
 			x = x, y = y,
 			w = w, h = h
 		})
@@ -108,6 +131,24 @@ local function MinimapPanel(parent)
 		cameraOrigin.y = cameraOrigin.y + newY -- Moves origin
 
 		input.SetCursorPos(self.originX, self.originY) -- Recenters cursor at the original position
+	end
+
+	local mapMin, mapMax = chicagoRPMinimap.GetMapSize()
+
+	function panel:OnMouseWheeled(delta)
+		local calcZ = cameraOrigin.z + (delta * -1)
+		cameraOrigin.z = math.Clamp(calcZ, mapMin.z, mapMax.z)
+	end
+
+	function panel:GetWorldPosition()
+		ResetVector(worldPosition)
+
+		local mx, my = self:ScreenToLocal(gui.MouseX(), gui.MouseY()) -- Pass the mouse into the panel coordinates
+
+		worldPosition.x = (mx + self.Offset.x) * self.MapScale -- Adds the map offset and then scale it to the scale of your minimap
+		worldPosition.y = (my + self.Offset.y) * self.MapScale
+
+		return worldPosition
 	end
 
 	return panel
