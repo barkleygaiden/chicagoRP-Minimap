@@ -9,10 +9,37 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
-local function ResetVector(vect)
-	vect.x = 0
-	vect.y = 0
-	vect.z = 0
+-- we need creation menu too
+
+local function WaypointButton(parent, pos, name, color)
+
+local function WaypointDropdown(parent, onwaypoint)
+	local dropdown = DermaMenu(false, parent)
+	dropdown:NoClipping(true)
+
+	local addWaypoint = Menu:AddOption("Add Waypoint")
+	addWaypoint:SetIcon("icon16/add.png")
+	addWaypoint:SetIsCheckable(false)
+
+	function addWaypoint:DoClick()
+		-- code here
+		dropdown:Remove()
+	end
+
+	local removeWaypoint = Menu:AddOption("Add Waypoint")
+	removeWaypoint:SetIcon("icon16/add.png")
+	removeWaypoint:SetIsCheckable(false)
+
+	function removeWaypoint:DoClick()
+		-- code here
+		dropdown:Remove()
+	end
+
+	if !onwaypoint then removeWaypoint:SetDisabled(true) end
+
+	dropdown:Open()
+
+	return dropdown
 end
 
 local function MinimapFrame()
@@ -54,22 +81,12 @@ local function CreateOrigin(vect)
 	cameraOrigin = plyPos + originAdd
 end
 
-local endPos = Vector(0, 0, -32768)
-
-local function GetCursorCoordinate(origin) -- STILL does not solve the problem of how to translate cursor position to world position
-	local tr = {}
-	tr.start = origin
-	tr.endpos = endPos
-
-	local trace = util.TraceLine(tr)
-
-	return trace.endpos
-end
-
 -- Add ortho to render.RenderView
 -- Zoom functionality (somewhat done, needs to be rewritten to use ortho)
 -- Translating coordinates from Minimap panel to real world, and vise versa (kinda done, test ingame)
 -- Cave mode (run trace to ceiling if not outside)
+-- Waypoint system (aim for basic ones, add/remove and done via sql, unfilled circles drawn in hudpaint/postopaquerenderables hook)
+-- DButton brotha
 
 local cameraAngle = Angle(-90, 0, 0)
 local worldPosition = Vector(0, 0, 0)
@@ -110,12 +127,14 @@ local function MinimapPanel(parent)
 	end
 
 	function panel:OnMousePressed(mousecode)
-		if mousecode != MOUSE_FIRST then return end
+		if mousecode == MOUSE_LEFT then
+			self.cursorX, self.cursorY = input.GetCursorPos() -- Position before dragging starts
 
-		self.cursorX, self.cursorY = input.GetCursorPos() -- Position before dragging starts
-
-		self:MouseCapture(true)
-		self:CaptureMouse()
+			self:MouseCapture(true)
+			self:CaptureMouse()
+		elseif mousecode == MOUSE_RIGHT then
+			WaypointDropdown(panel)
+		end
 	end
 
 	function panel:OnMouseReleased(mousecode)
@@ -141,7 +160,7 @@ local function MinimapPanel(parent)
 	end
 
 	function panel:GetWorldPosition()
-		ResetVector(worldPosition)
+		chicagoRPMinimap.ResetVector(worldPosition)
 
 		local mx, my = self:ScreenToLocal(gui.MouseX(), gui.MouseY()) -- Pass the mouse into the panel coordinates
 
