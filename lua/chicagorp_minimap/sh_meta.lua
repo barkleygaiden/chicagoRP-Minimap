@@ -1,5 +1,7 @@
+require("niknaks")
+
 chicagoRPMinimap = chicagoRPMinimap or {}
-local bsp = nil
+local bsp = NikNaks.CurrentMap
 
 ---------------------------------
 -- chicagoRPMinimap.GetAllWaypoints
@@ -20,7 +22,6 @@ local oldLeaf
 -- State:		Shared
 -- Returns:		Vector - Position of the ceiling.
 function chicagoRPMinimap.IsOutside(pos)
-	bsp = bsp or NikNaks.CurrentMap
 	local leaf = bsp:PointInLeafCache(0, pos, oldLeaf)
 
 	oldleaf = leaf -- this shouldn't cause issues even though this is a shared function
@@ -35,8 +36,6 @@ end
 -- State:		Shared
 -- Returns:		Vector - Size of the map.
 function chicagoRPMinimap.GetMapSize(ply)
-	bsp = bsp or NikNaks.CurrentMap
-
 	return bsp:GetBrushBounds()
 end
 
