@@ -11,8 +11,6 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
 
 -- we need creation menu too
 
-local function WaypointButton(parent, pos, name, color)
-
 local function WaypointDropdown(parent, onwaypoint)
 	local dropdown = DermaMenu(false, parent)
 	dropdown:NoClipping(true)
@@ -40,6 +38,38 @@ local function WaypointDropdown(parent, onwaypoint)
 	dropdown:Open()
 
 	return dropdown
+end
+
+local function GetShortenedName(str)
+	local shortstr = ""
+	local exploded = string.Explode(" ", str)
+
+	for i = 1, #exploded do
+		local word = string.upper(exploded[i])
+		local letter = string.Left(letter, 2)
+
+		shortstr = shortstr .. letter
+	end
+
+	return shortstr
+end
+
+local function WaypointButton(parent, x, y, w, h, name, color)
+	local button = vgui.Create("DButton", parent)
+	button:SetSize(w, h)
+	button:SetPos(x, y)
+
+	local concatname = GetShortenedName(name)
+
+	function button:Paint(w, h)
+		draw.SimpleText(concatname, "DermaDefault", 0, 0, color_white)
+	end
+
+	function button:DoClick()
+		WaypointDropdown(parent, true)
+	end
+
+	return button
 end
 
 local function MinimapFrame()
