@@ -1,6 +1,7 @@
 local ply = nil
-local OpenMapPanel = nil
 local IsMapOpen = false
+
+chicagoRPMinimap.OpenMapPanel = nil
 
 list.Set("DesktopWindows", "chicagoRP Minimap", {
     title = "Client Settings",
@@ -10,7 +11,12 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
-local function WaypointDropdown(parent, onwaypoint)
+-- remove waypoint code
+-- edit waypoint code
+-- more meta work
+-- sql + local code
+
+local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	local dropdown = DermaMenu(false, parent)
 	dropdown:NoClipping(true)
 
@@ -19,8 +25,10 @@ local function WaypointDropdown(parent, onwaypoint)
 	addWaypoint:SetIsCheckable(false)
 
 	function addWaypoint:DoClick()
-		-- code here
+		chicagoRPMinimap.WaypointCreation(mouseX, mouseY)
 	end
+
+	if onwaypoint then addWaypoint:SetDisabled(true) end
 
 	local removeWaypoint = Menu:AddOption("Add Waypoint")
 	removeWaypoint:SetIcon("icon16/add.png")
@@ -44,6 +52,10 @@ function chicagoRPMinimap.WaypointButton(parent, x, y, w, h, name, color)
 
 	local concatname = chicagoRPMinimap.ShortenWaypointName(name)
 
+	function button:Init()
+		self.IsWaypoint = true
+	end
+
 	function button:Paint(w, h)
 		draw.RoundedBox(4, 0, 0, 0, w, h, color)
 		draw.SimpleText(concatname, "DermaDefault", 0, 0, color_white)
@@ -56,7 +68,7 @@ function chicagoRPMinimap.WaypointButton(parent, x, y, w, h, name, color)
 	return button
 end
 
-local function WaypointCreation(pos)
+function chicagoRPMinimap.WaypointCreation(mouseX, mouseY)
 	local dialogBox = vgui.Create("DDialogBox")
 	dialogBox:SetIcon("icon16/map_add.png")
 	dialogBox:SetTitle("Create Waypoint")
@@ -84,13 +96,15 @@ local function WaypointCreation(pos)
 	local colorMixer = dialog:Add("DColorMixer")
 
 	function dialogBox:OnAccept()
+		local mapPanel = chicagoRPMinimap.OpenMapPanel
 		local waypointName = nameInput:GetText()
 		local waypointColor = colorMixer:GetColor()
 		local isShared = localCheckbox:GetChecked()
 		local isPermanent = permanentCheckbox:GetChecked()
+		local worldPosition = chicagoRPMinimap.GetWorldPosition(mouseX, mouseY)
 
-		chicagoRPMinimap.CreateWaypoint(waypointName, waypointColor, isShared, isPermanent)
-		chicagoRPMinimap.WaypointButton(OpenMapPanel, pos, w, h, waypointName, waypointColor)
+		chicagoRPMinimap.CreateWaypoint(waypointName, worldPosition, waypointColor, isShared, isPermanent)
+		chicagoRPMinimap.WaypointButton(mapPanel, pos, w, h, waypointName, waypointColor)
 	end
 
 	return dialogBox
@@ -142,7 +156,6 @@ end
 -- Waypoint system (aim for basic ones, add/remove and done via sql, unfilled circles drawn in hudpaint/postopaquerenderables hook)
 
 local cameraAngle = Angle(-90, 0, 0)
-local worldPosition = Vector(0, 0, 0)
 
 local function MinimapPanel(parent)
 	if !IsValid(parent) then return end
@@ -180,13 +193,15 @@ local function MinimapPanel(parent)
 	end
 
 	function panel:OnMousePressed(mousecode)
+		local mouseX, mouseY = gui.MouseX(), gui.MouseY() -- Position before dragging starts
+
 		if mousecode == MOUSE_LEFT then
-			self.cursorX, self.cursorY = input.GetCursorPos() -- Position before dragging starts
+			self.cursorX, self.cursorY = mouseX, mouseY
 
 			self:MouseCapture(true)
 			self:CaptureMouse()
 		elseif mousecode == MOUSE_RIGHT then
-			WaypointDropdown(panel)
+			WaypointDropdown(panel, false, mouseX, mouseY)
 		end
 	end
 
@@ -209,21 +224,13 @@ local function MinimapPanel(parent)
 
 	function panel:OnMouseWheeled(delta)
 		local calcZ = cameraOrigin.z + (delta * -1)
+
 		cameraOrigin.z = math.Clamp(calcZ, mapMin.z, mapMax.z)
+
+		self.traceHeight = cameraOrigin.z
 	end
 
-	function panel:GetWorldPosition()
-		chicagoRPMinimap.ResetVector(worldPosition)
-
-		local mx, my = self:ScreenToLocal(gui.MouseX(), gui.MouseY()) -- Pass the mouse into the panel coordinates
-
-		worldPosition.x = (mx + self.Offset.x) * self.MapScale -- Adds the map offset and then scale it to the scale of your minimap
-		worldPosition.y = (my + self.Offset.y) * self.MapScale
-
-		return worldPosition
-	end
-
-	OpenMapPanel = panel
+	chicagoRPMinimap.OpenMapPanel = panel
 
 	return panel
 end
