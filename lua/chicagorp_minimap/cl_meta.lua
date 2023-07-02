@@ -1,7 +1,7 @@
 chicagoRPMinimap.LocalWaypoints = chicagoRPMinimap.LocalWaypoints or {}
 
 sql.Begin()
-sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'PosX' INT(8) NOT NULL, 'PosY' INT(8) NOT NULL, 'PosZ' INT(8) NOT NULL, 'Shared' BIT(1) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'UUID' VARCHAR(96), 'PosX' INT(8) NOT NULL, 'PosY' INT(8) NOT NULL, 'PosZ' INT(8) NOT NULL, 'Shared' BIT(1) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
 sql.Commit()
 
 -- Name (String), this MUST be escaped with sql.SQLStr
@@ -101,10 +101,11 @@ end
 
 local function AddPermanentWaypoint(name, r, g, b, a, shared)
 	local escapedName = sql.SQLStr(name)
+	local UUID = chicagoRP.uuid()
 	local bool = tonumber(shared)
 
 	sql.Begin()
-	sql.Query("INSERT INTO `gb_players`('Name', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. escapedName .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. bool .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. escapedName .. "', '" .. UUID .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. bool .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
 	sql.Commit()
 end
 
