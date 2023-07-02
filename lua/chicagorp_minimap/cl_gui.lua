@@ -1,4 +1,5 @@
 local ply = nil
+local OpenMapPanel = nil
 local IsMapOpen = false
 
 list.Set("DesktopWindows", "chicagoRP Minimap", {
@@ -8,8 +9,6 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
         client:ConCommand("chicagoRP_minimap")
     end
 })
-
--- we need creation menu too
 
 local function WaypointDropdown(parent, onwaypoint)
 	local dropdown = DermaMenu(false, parent)
@@ -21,7 +20,6 @@ local function WaypointDropdown(parent, onwaypoint)
 
 	function addWaypoint:DoClick()
 		-- code here
-		dropdown:Remove()
 	end
 
 	local removeWaypoint = Menu:AddOption("Add Waypoint")
@@ -30,7 +28,6 @@ local function WaypointDropdown(parent, onwaypoint)
 
 	function removeWaypoint:DoClick()
 		-- code here
-		dropdown:Remove()
 	end
 
 	if !onwaypoint then removeWaypoint:SetDisabled(true) end
@@ -40,28 +37,15 @@ local function WaypointDropdown(parent, onwaypoint)
 	return dropdown
 end
 
-local function GetShortenedName(str)
-	local shortstr = ""
-	local exploded = string.Explode(" ", str)
-
-	for i = 1, #exploded do
-		local word = string.upper(exploded[i])
-		local letter = string.Left(letter, 2)
-
-		shortstr = shortstr .. letter
-	end
-
-	return shortstr
-end
-
-local function WaypointButton(parent, x, y, w, h, name, color)
+function chicagoRPMinimap.WaypointButton(parent, x, y, w, h, name, color)
 	local button = vgui.Create("DButton", parent)
 	button:SetSize(w, h)
 	button:SetPos(x, y)
 
-	local concatname = GetShortenedName(name)
+	local concatname = chicagoRPMinimap.ShortenWaypointName(name)
 
 	function button:Paint(w, h)
+		draw.RoundedBox(4, 0, 0, 0, w, h, color)
 		draw.SimpleText(concatname, "DermaDefault", 0, 0, color_white)
 	end
 
@@ -70,6 +54,46 @@ local function WaypointButton(parent, x, y, w, h, name, color)
 	end
 
 	return button
+end
+
+local function WaypointCreation(pos)
+	local dialogBox = vgui.Create("DDialogBox")
+	dialogBox:SetIcon("icon16/map_add.png")
+	dialogBox:SetTitle("Create Waypoint")
+	dialogBox:SetText("")
+	dialogBox:SetWide(280) -- Carefully selected for color switch alignment
+
+	local nameInput = dialogBox:Add("DTextEntry")
+	nameInput:SetPlaceholderText("Waypoint name")
+	nameInput:DockMargin(0, 4, 0, 0)
+
+	function nameInput:AllowInput(str)
+		if #str > 64 then return true end
+	end
+
+	local localCheckbox = dialogBox:Add("DCheckBoxLabel")
+	localCheckbox:SetText("Friends can see")
+	localCheckbox:SetValue(false)
+	localCheckbox:SizeToContents()
+
+	local permanentCheckbox = dialogBox:Add("DCheckBoxLabel")
+	permanentCheckbox:SetText("Permanent")
+	permanentCheckbox:SetValue(false)
+	permanentCheckbox:SizeToContents()
+
+	local colorMixer = dialog:Add("DColorMixer")
+
+	function dialogBox:OnAccept()
+		local waypointName = nameInput:GetText()
+		local waypointColor = colorMixer:GetColor()
+		local isShared = localCheckbox:GetChecked()
+		local isPermanent = permanentCheckbox:GetChecked()
+
+		chicagoRPMinimap.CreateWaypoint(waypointName, waypointColor, isShared, isPermanent)
+		chicagoRPMinimap.WaypointButton(OpenMapPanel, pos, w, h, waypointName, waypointColor)
+	end
+
+	return dialogBox
 end
 
 local function MinimapFrame()
@@ -116,7 +140,6 @@ end
 -- Translating coordinates from Minimap panel to real world, and vise versa (kinda done, test ingame)
 -- Cave mode (run trace to ceiling if not outside)
 -- Waypoint system (aim for basic ones, add/remove and done via sql, unfilled circles drawn in hudpaint/postopaquerenderables hook)
--- DButton brotha
 
 local cameraAngle = Angle(-90, 0, 0)
 local worldPosition = Vector(0, 0, 0)
@@ -200,6 +223,8 @@ local function MinimapPanel(parent)
 		return worldPosition
 	end
 
+	OpenMapPanel = panel
+
 	return panel
 end
 
@@ -214,6 +239,10 @@ hook.Add("FinishMove", "chicagoRP_minimap_move", function(ply, mv)
 
 	NextMove = time + 0.5
 end
+
+hook.Add("PostDrawOpaqueRenderables", "chicagoRP_minimap_waypointdraw", function()
+	-- need waypoint table :(
+end)
 
 local function OpenMinimap()
 	ply = ply or LocalPlayer()
