@@ -1,15 +1,14 @@
 chicagoRPMinimap.LocalWaypoints = chicagoRPMinimap.LocalWaypoints or {}
 
 sql.Begin()
-sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'UUID' VARCHAR(96), 'PosX' INT(8) NOT NULL, 'PosY' INT(8) NOT NULL, 'PosZ' INT(8) NOT NULL, 'Shared' BIT(1) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'UUID' VARCHAR(96), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'Shared' BIT(1) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
 sql.Commit()
 
 -- Name (String), this MUST be escaped with sql.SQLStr
--- Position (Ints) Vector(300.30, 2234.12, 4.41)
--- Permanent (Boolean)
+-- UUID (String)
+-- Position (Ints), Vector(300.30, 2234.12, 4.41)
 -- Color (Ints)
 
-local worldPosition = Vector(0, 0, 0)
 local startPos = Vector(0, 0, 0)
 local endPos = Vector(0, 0, -32768)
 
@@ -39,10 +38,7 @@ function chicagoRPMinimap.GetWorldPosition(x, y)
 	tr.mask = MASK_SOLID_BRUSHONLY
 
 	local trace = util.TraceLine(tr)
-
-	worldPosition.x = startPos.x
-	worldPosition.y = startPos.y
-	worldPosition.z = HitPos.z
+	local worldPosition = Vector(startPos.x, startPos.y, trace.HitPos.z)
 
 	return worldPosition
 end
