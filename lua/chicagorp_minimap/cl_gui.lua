@@ -101,7 +101,7 @@ function chicagoRPMinimap.WaypointCreation(mouseX, mouseY)
 		local waypointColor = colorMixer:GetColor()
 		local isShared = localCheckbox:GetChecked()
 		local isPermanent = permanentCheckbox:GetChecked()
-		local worldPosition = chicagoRPMinimap.GetWorldPosition(mouseX, mouseY)
+		local worldPosition = chicagoRPMinimap.LocalToWorld(mouseX, mouseY)
 
 		chicagoRPMinimap.CreateWaypoint(waypointName, worldPosition, waypointColor, isShared, isPermanent)
 		chicagoRPMinimap.WaypointButton(mapPanel, pos, w, h, waypointName, waypointColor)
