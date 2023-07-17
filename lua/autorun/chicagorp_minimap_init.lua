@@ -11,7 +11,7 @@ for i = 1, #files do
     if f == "sh_meta.lua" then continue end
 
     if string.Left(f, 3) == "sv_" then
-        if SERVER then 
+        if SERVER then
             include("chicagorp_minimap/" .. f) 
         end
     elseif string.Left(f, 3) == "cl_" then

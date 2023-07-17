@@ -6,7 +6,7 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 		local waypoint = {}
 		waypoint.Name = net.ReadString()
 		waypoint.UUID = net.ReadString()
-		waypoint.SteamID = net.ReadString()
+		waypoint.Owner = net.ReadString()
 		waypoint.Pos = Vector(net.ReadInt(18), net.ReadInt(18), net.ReadInt(18))
 		waypoint.Color = Color(net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8))
 

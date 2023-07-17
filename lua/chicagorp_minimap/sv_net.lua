@@ -8,22 +8,22 @@ net.Receive("chicagoRP_minimap_createwaypoint", function(len, ply)
 	ply.LastWaypointNet = Time + 0.5
 
 	local UUID = chicagoRP.uuid()
-	local SteamID = ply:SteamID64()
+	local steamID = ply:SteamID64()
 	local name = sql.SQLStr(net.ReadString())
 	local PosX, PosY, PosZ = net.ReadInt(18), net.ReadInt(18), net.ReadInt(18)
 	local r, g, b, a = net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8)
 	local isPermanent = net.ReadBool()
 
 	sql.Begin()
-	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'SteamID', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. SteamID .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
 	sql.Commit()
 
-	-- write friends system for chicagoRP library
+	local friends = ply:GetFriends()
 
 	net.WriteUInt(1, 11) -- Count
 	net.WriteString(name)
 	net.WriteString(UUID)
-	net.WriteString(SteamID)
+	net.WriteString(steamID)
 	net.WriteInt(PosX, 18)
 	net.WriteInt(PosY, 18)
 	net.WriteInt(PosZ, 18)
