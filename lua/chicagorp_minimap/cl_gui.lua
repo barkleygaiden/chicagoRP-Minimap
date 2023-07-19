@@ -11,10 +11,8 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
--- remove waypoint code
--- edit waypoint code
--- more meta work
--- sql + local code
+-- Serverside CreateWaypoint, EditWaypoint, DeleteWaypoint
+-- Waypoint self values
 
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	local dropdown = DermaMenu(false, parent)

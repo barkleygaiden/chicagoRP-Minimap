@@ -13,8 +13,9 @@ local function SQLInit()
 
 	for i = 1, #waypoints do
 		local waypoint = waypoints[i]
+		local UUID = waypoint.UUID
 
-		table.insert(LocalTable, waypoint)
+		LocalTable[UUID] = waypoint
 	end
 end
 
@@ -115,7 +116,6 @@ local function SendWaypointNet(name, pos, color, permanent)
 	net.WriteUInt(color.r, 8) -- Color (Int)
 	net.WriteUInt(color.g, 8)
 	net.WriteUInt(color.b, 8)
-	net.WriteUInt(color.a, 8)
 	net.WriteBool(permanent) -- Permanent? (Vector)
 end
 
@@ -131,11 +131,12 @@ local function AddLocalWaypoint(name, pos, color)
 	waypoint.Pos = pos
 	waypoint.Color = color
 
-	table.insert(LocalTable, waypoint)
+	LocalTable[UUID] = waypoint
 end
 
 local function AddPermanentWaypoint(name, pos, color)
 	name = sql.SQLStr(name)
+	local LocalTable = chicagoRPMinimap.LocalWaypoints
 	local UUID = chicagoRP.uuid()
 
 	local r, g, b, a = color
@@ -152,7 +153,7 @@ local function AddPermanentWaypoint(name, pos, color)
 	waypoint.Pos = pos
 	waypoint.Color = color
 
-	table.insert(LocalTable, waypoint)
+	LocalTable[UUID] = waypoint
 end
 
 ---------------------------------
@@ -179,4 +180,17 @@ function chicagoRPMinimap.CreateWaypoint(name, pos, color, shared, permanent)
 	elseif !shared and !permanent then
 		AddLocalWaypoint(name, pos, color)
 	end
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointOwner
+---------------------------------
+-- Desc:		Check if a waypoint is owned by the player.
+-- State:		Client
+-- Arg One:		Entity - The player to check.
+-- Arg Two:		Table - The waypoint we want to check.
+function chicagoRPMinimap.IsWaypointOwner(ply, waypoint)
+	if !istable(waypoint) then return false end
+
+	return ply:SteamID64() == waypoint.Owner
 end
