@@ -1,12 +1,13 @@
 chicagoRPMinimap.LocalWaypoints = chicagoRPMinimap.LocalWaypoints or {}
 chicagoRPMinimap.SharedWaypoints = chicagoRPMinimap.SharedWaypoints or {}
 
-local function SQLInit()
+hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
 	local LocalTable = chicagoRPMinimap.LocalWaypoints
+	local MapName = chicagoRPMinimap.GetMapName()
 
 	sql.Begin()
-	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'UUID' VARCHAR(96), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints'")
+	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96), 'Map' VARCHAR(32), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. MapName .. "'")
 	sql.Commit()
 
 	if !waypoints then return end
@@ -17,9 +18,7 @@ local function SQLInit()
 
 		LocalTable[UUID] = waypoint
 	end
-end
-
-SQLInit()
+end)
 
 -- Name (String), this MUST be escaped with sql.SQLStr
 -- UUID (String)
@@ -110,12 +109,8 @@ end
 local function SendWaypointNet(name, pos, color, permanent)
 	net.Start("chicagoRP_minimap_createwaypoint")
 	net.WriteString(name) -- Name (String)
-	net.WriteInt(pos.x, 18) -- Position (Int)
-	net.WriteInt(pos.y, 18)
-	net.WriteInt(pos.z, 18)
-	net.WriteUInt(color.r, 8) -- Color (Int)
-	net.WriteUInt(color.g, 8)
-	net.WriteUInt(color.b, 8)
+	chicagoRPMinimap.WriteVector(pos) -- Position (Float)
+	chicagoRPMinimap.WriteColor(color.r, color.g, color.b) -- Color (Int)
 	net.WriteBool(permanent) -- Permanent? (Vector)
 end
 
@@ -137,14 +132,14 @@ end
 local function AddPermanentWaypoint(name, pos, color)
 	name = sql.SQLStr(name)
 	local LocalTable = chicagoRPMinimap.LocalWaypoints
+	local MapName = chicagoRPMinimap.GetMapName()
 	local UUID = chicagoRP.uuid()
-
 	local r, g, b, a = color
 
 	if IsColor(color) then r, g, b, a = color:Unpack() end
 
 	sql.Begin()
-	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. MapName .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
 	sql.Commit()
 
 	local waypoint = {}

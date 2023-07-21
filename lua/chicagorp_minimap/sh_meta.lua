@@ -1,7 +1,6 @@
 require("niknaks")
 
 chicagoRPMinimap = chicagoRPMinimap or {}
-local bsp = NikNaks.CurrentMap
 
 ---------------------------------
 -- chicagoRPMinimap.WriteVector
@@ -20,9 +19,33 @@ end
 ---------------------------------
 -- Desc:		Reads a vector using the net library.
 -- State:		Shared
--- Returns:		Vector - Newly created vector.
+-- Returns:		Numbers - Vector values from net message.
 function chicagoRPMinimap.ReadVector()
-	return Vector(net.ReadFloat(), net.ReadFloat(), net.ReadFloat())
+	return net.ReadFloat(), net.ReadFloat(), net.ReadFloat()
+end
+
+---------------------------------
+-- chicagoRPMinimap.WriteColor
+---------------------------------
+-- Desc:		Writes a color using the net library.
+-- State:		Shared
+-- Arg One:		Number - Color (R) we want to write.
+-- Arg Two:		Number - Color (G) we want to write.
+-- Arg Three:	Number - Color (B) we want to write.
+function chicagoRPMinimap.WriteColor(r, g, b)
+	net.WriteUInt(r, 8)
+	net.WriteUInt(g, 8)
+	net.WriteUInt(b, 8)
+end
+
+---------------------------------
+-- chicagoRPMinimap.ReadVector
+---------------------------------
+-- Desc:		Reads a color using the net library.
+-- State:		Shared
+-- Returns:		Numbers - Color values from net message.
+function chicagoRPMinimap.ReadColor()
+	return net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8)
 end
 
 ---------------------------------
@@ -57,11 +80,24 @@ local oldLeaf
 -- Arg One:		Vector - Position we want to check.
 -- Returns:		Vector - Position of the ceiling.
 function chicagoRPMinimap.IsOutside(pos)
+	local bsp = NikNaks.CurrentMap
 	local leaf = bsp:PointInLeafCache(0, pos, oldLeaf)
 
 	oldleaf = leaf -- this shouldn't cause issues even though this is a shared function
 
 	return leaf:IsOutsideMap()
+end
+
+---------------------------------
+-- chicagoRPMinimap.GetMapName
+---------------------------------
+-- Desc:		Gets the name of the map currently being played on.
+-- State:		Shared
+-- Returns:		String - Name of the map.
+function chicagoRPMinimap.GetMapName()
+	local bsp = NikNaks.CurrentMap
+
+	return bsp:GetMapName()
 end
 
 ---------------------------------
@@ -71,6 +107,8 @@ end
 -- State:		Shared
 -- Returns:		Vector - Size of the map.
 function chicagoRPMinimap.GetMapSize()
+	local bsp = NikNaks.CurrentMap
+
 	return bsp:GetBrushBounds()
 end
 

@@ -9,8 +9,8 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 			waypoint.Name = net.ReadString()
 			waypoint.UUID = net.ReadString()
 			waypoint.Owner = net.ReadString()
-			waypoint.Pos = Vector(net.ReadInt(18), net.ReadInt(18), net.ReadInt(18))
-			waypoint.Color = Color(net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8))
+			waypoint.Pos = Vector(chicagoRPMinimap.ReadVector())
+			waypoint.Color = Color(chicagoRPMinimap.ReadColor())
 
 			SharedTable[waypoint.UUID] = waypoint
 		else
@@ -18,5 +18,27 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 
 			SharedTable[UUID] = nil
 		end
+	end
+end)
+
+net.Receive("chicagoRP_minimap_transferwaypoints", function(len)
+	local LocalTable = chicagoRPMinimap.LocalWaypoints
+	local OriginalMap = net.ReadString()
+	local NewMap = net.ReadString()
+
+	sql.Begin()
+	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. OriginalMap .. "'")
+	sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Map'='" .. NewMap .. "' WHERE 'Map'='" .. OriginalMap .. "'")
+	sql.Commit()
+
+	chicagoRPMinimap.SharedWaypoints = {}
+
+	if !waypoints then return end
+
+	for i = 1, #waypoints do
+		local waypoint = waypoints[i]
+		local UUID = waypoint.UUID
+
+		LocalTable[UUID] = nil
 	end
 end)

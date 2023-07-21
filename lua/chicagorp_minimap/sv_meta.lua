@@ -5,16 +5,6 @@
 -- Permanent (Boolean)
 -- Color (Ints)
 
-function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
-	local steamID = ply:SteamID64()
-
-	sql.Begin()
-	local isOwner = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "' AND 'Owner'='" .. steamID)
-	sql.Commit()
-
-	return isOwner
-end
-
 local function NetTableHandler(tbl, count)
 	for i = 1, count do
 		local waypoint = tbl[i]
@@ -103,18 +93,29 @@ function chicagoRPMinimap.DeleteWaypoint(UUID)
 	-- codehere
 end
 
+function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
+	local steamID = ply:SteamID64()
+
+	sql.Begin()
+	local isOwner = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "' AND 'Owner'='" .. steamID)
+	sql.Commit()
+
+	return isOwner
+end
+
 hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
 	sql.Begin()
-	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(64), 'UUID' VARCHAR(96), 'Owner' VARCHAR(18), 'Permanent' BOOL, 'PosX' FLOAT(8), 'PosY' FLOAT(8), 'PosZ' FLOAT(8), 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96), 'Owner' VARCHAR(18), 'Permanent' BOOL, 'Map' VARCHAR(32), 'PosX' FLOAT(8), 'PosY' FLOAT(8), 'PosZ' FLOAT(8), 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
 	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'Permanent'='0'")
 	sql.Commit()
 end)
 
 hook.Add("PlayerInitialSpawn", "chicagoRP_minimap_sendwaypoints", function(ply, _)
 	local steamID = ply:SteamID64()
+	local MapName = chicagoRPMinimap.GetMapName()
 
 	sql.Begin()
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "'")
+	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "' AND 'Map'='" .. MapName .. "'")
 	sql.Commit()
 
 	chicagoRPMinimap.NetAddHandler(ply, waypoints)
@@ -127,9 +128,27 @@ hook.Add("player_disconnect", "chicagoRP_minimap_removewaypoints", function(data
 	local steamID = ply:SteamID64()
 
 	sql.Begin()
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "'")
+	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "' AND 'Map'='" .. MapName .. "'")
 	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'Permanent'='0' AND 'Owner'='" .. steamID .. "'")
 	sql.Commit()
 
 	chicagoRPMinimap.NetRemoveHandler(ply, waypoints, #waypoints)
+end)
+
+concommand.Add("chicagorp_minimap_transfertomap", function(ply, cmd, args)
+	if !ply:IsSuperAdmin() then return end
+	if !args or table.IsEmpty(args) then return end
+	if !args[2] then return end
+
+	local OriginalMap = args[1]
+	local NewMap = args[2]
+
+	sql.Begin()
+	sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Map'='" .. NewMap .. "' WHERE 'Map'='" .. OriginalMap .. "'")
+	sql.Commit()
+
+	net.Start("chicagoRP_minimap_transferwaypoints") -- Clears all waypoints
+	net.WriteString(OriginalMap)
+	net.WriteString(NewMap)
+	net.Broadcast()
 end)

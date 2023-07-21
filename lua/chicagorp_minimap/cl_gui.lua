@@ -12,6 +12,8 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
 })
 
 -- Serverside CreateWaypoint, EditWaypoint, DeleteWaypoint
+-- Clientside EditWaypoint, DeleteWaypoint
+-- Merge net messages
 -- Waypoint self values
 
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
@@ -78,7 +80,7 @@ function chicagoRPMinimap.WaypointCreation(mouseX, mouseY)
 	nameInput:DockMargin(0, 4, 0, 0)
 
 	function nameInput:AllowInput(str)
-		if #str > 64 then return true end
+		if #str > 48 then return true end
 	end
 
 	local localCheckbox = dialogBox:Add("DCheckBoxLabel")

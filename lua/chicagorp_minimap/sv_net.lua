@@ -1,6 +1,9 @@
-util.AddNetworkString("chicagoRP_minimap_createwaypoint")
+util.AddNetworkString("chicagoRP_minimap_createwaypoint") -- Client to Server
 util.AddNetworkString("chicagoRP_minimap_editwaypoint")
 util.AddNetworkString("chicagoRP_minimap_deletewaypoint")
+
+util.AddNetworkString("chicagoRP_minimap_fetchwaypoints") -- Server to Client
+util.AddNetworkString("chicagoRP_minimap_clearwaypoints")
 
 net.Receive("chicagoRP_minimap_createwaypoint", function(len, ply)
 	local Time = CurTime()
@@ -10,16 +13,17 @@ net.Receive("chicagoRP_minimap_createwaypoint", function(len, ply)
 	ply.LastWaypointNet = Time + 0.5
 
 	local UUID = chicagoRP.uuid()
+	local MapName = chicagoRPMinimap.GetMapName()
 	local steamID = ply:SteamID64()
 	local name = sql.SQLStr(net.ReadString())
-	local PosX, PosY, PosZ = net.ReadInt(18), net.ReadInt(18), net.ReadInt(18)
-	local r, g, b = net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8)
+	local PosX, PosY, PosZ = chicagoRPMinimap.ReadVector()
+	local r, g, b = chicagoRPMinimap.ReadColor()
 	local isPermanent = tostring(tonumber(net.ReadBool()))
 
-	if #name > 64 then name = string.Left(name, 64) end
+	if #name > 48 then name = string.Left(name, 48) end
 
 	sql.Begin()
-	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. isPermanent .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. isPermanent .. "', '" .. MapName .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
 	sql.Commit()
 
 	chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, PosX, PosY, PosZ, r, g, b)
@@ -35,8 +39,8 @@ net.Receive("chicagoRP_minimap_editwaypoint", function(len, ply)
 	local UUID = sql.SQLStr(net.ReadString())
 	local steamID = ply:SteamID64()
 	local name = sql.SQLStr(net.ReadString())
-	local PosX, PosY, PosZ = net.ReadInt(18), net.ReadInt(18), net.ReadInt(18)
-	local r, g, b = net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8)
+	local PosX, PosY, PosZ = chicagoRPMinimap.ReadVector()
+	local r, g, b = chicagoRPMinimap.ReadColor()
 	local isPermanent = tostring(tonumber(net.ReadBool()))
 
 	sql.Begin()
