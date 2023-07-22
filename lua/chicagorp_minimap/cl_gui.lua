@@ -13,8 +13,7 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
 
 -- Serverside CreateWaypoint, EditWaypoint, DeleteWaypoint
 -- Clientside EditWaypoint, DeleteWaypoint
--- Merge net messages
--- Waypoint self values
+-- Waypoint button self values
 
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	local dropdown = DermaMenu(false, parent)

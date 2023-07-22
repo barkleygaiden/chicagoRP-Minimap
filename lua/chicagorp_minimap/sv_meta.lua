@@ -1,10 +1,3 @@
--- Name (String), this MUST be escaped with sql.SQLStr
--- UUID (String)
--- Owner's SteamID (String)
--- Position (Ints) Vector(300.30, 2234.12, 4.41)
--- Permanent (Boolean)
--- Color (Ints)
-
 local function NetTableHandler(tbl, count)
 	for i = 1, count do
 		local waypoint = tbl[i]

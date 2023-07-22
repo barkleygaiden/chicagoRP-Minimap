@@ -20,11 +20,6 @@ hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
 	end
 end)
 
--- Name (String), this MUST be escaped with sql.SQLStr
--- UUID (String)
--- Position (Ints), Vector(300.30, 2234.12, 4.41)
--- Color (Ints)
-
 local startPos = Vector(0, 0, 0)
 local endPos = Vector(0, 0, -32768)
 
@@ -94,6 +89,10 @@ end
 -- Returns:		String - The waypoint's shortened name.
 function chicagoRPMinimap.ShortenWaypointName(str)
 	local shortstr = ""
+
+	local paren = string.Split(str, " (")
+	str = (paren and paren[1]) or str
+
 	local exploded = string.Explode(" ", str)
 
 	for i = 1, #exploded do
@@ -107,7 +106,8 @@ function chicagoRPMinimap.ShortenWaypointName(str)
 end
 
 local function SendWaypointNet(name, pos, color, permanent)
-	net.Start("chicagoRP_minimap_createwaypoint")
+	net.Start("chicagoRP_minimap_waypoint")
+	net.WriteUInt(1, 2)
 	net.WriteString(name) -- Name (String)
 	chicagoRPMinimap.WriteVector(pos) -- Position (Float)
 	chicagoRPMinimap.WriteColor(color.r, color.g, color.b) -- Color (Int)
