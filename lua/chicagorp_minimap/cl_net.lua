@@ -1,5 +1,7 @@
+local LocalTable = chicagoRPMinimap.LocalWaypoints
+local SharedTable = chicagoRPMinimap.SharedWaypoints
+
 net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
-	local SharedTable = chicagoRPMinimap.SharedWaypoints
 	local count = net.ReadUInt(11) -- if you manage to go above 2048 waypoints you deserve an award
 	local add = net.ReadBool()
 
@@ -9,6 +11,7 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 			waypoint.Name = net.ReadString()
 			waypoint.UUID = net.ReadString()
 			waypoint.Owner = net.ReadString()
+			waypoint.Permanent = net.ReadBool()
 			waypoint.Pos = Vector(chicagoRPMinimap.ReadVector())
 			waypoint.Color = Color(chicagoRPMinimap.ReadColor())
 
@@ -22,7 +25,6 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 end)
 
 net.Receive("chicagoRP_minimap_transferwaypoints", function(len)
-	local LocalTable = chicagoRPMinimap.LocalWaypoints
 	local OriginalMap = net.ReadString()
 	local NewMap = net.ReadString()
 

@@ -26,22 +26,26 @@ net.Receive("chicagoRP_minimap_waypoint", function(len, ply)
 			local UUID = chicagoRP.uuid()
 
 			sql.Begin()
-			sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. tostring(tonumber(isPermanent)) .. "', '" .. MapName .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+			sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. tostring(tonumber(isPermanent)) .. "', '" .. MapName .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "')")
 			sql.Commit()
 		elseif actionType == 2 then
 			local UUID = sql.SQLStr(net.ReadString())
 
+			if !chicagoRPMinimap.IsWaypointOwner(ply, UUID) then return end
+
 			sql.Begin()
-			sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. tostring(tonumber(isPermanent)) .. "', '" .. MapName .. "', '" .. PosX .. "', '" .. PosY .. "', '" .. PosZ .. "', '" .. r .. "', '" .. g .. "', '".. b .. "', '" .. a .. "')")
+			sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='" .. name .. "', 'PosX'='" .. PosX .. "', 'PosY='" .. PosY .. "', 'PosZ'='" .. PosZ .. "', 'ColorR'='" .. r .. "', 'ColorG'='" .. g .. "', 'ColorB'='" .. b .. "' WHERE 'UUID'='" .. UUID .. "' AND 'Owner'='" .. steamID .. "'")
 			sql.Commit()
 		end
 
-		chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, PosX, PosY, PosZ, r, g, b)
+		chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, isPermanent, PosX, PosY, PosZ, r, g, b)
 	elseif actionType == 3 then
 		local UUID = sql.SQLStr(net.ReadString())
 
+		if !chicagoRPMinimap.IsWaypointOwner(ply, UUID) then return end
+
 		sql.Begin()
-		sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. UUID .. "' and 'Owner'='" .. steamID "'")
+		sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. UUID .. "' and 'Owner'='" .. steamID .. "'")
 		sql.Commit()
 
 		chicagoRPMinimap.NetRemoveHandler(ply, UUID)

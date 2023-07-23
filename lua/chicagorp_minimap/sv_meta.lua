@@ -5,6 +5,7 @@ local function NetTableHandler(tbl, count)
 		net.WriteString(waypoint.Name)
 		net.WriteString(waypoint.UUID)
 		net.WriteString(waypoint.Owner)
+		net.WriteBool(waypoint.Permanent)
 		net.WriteInt(waypoint.PosX, 18)
 		net.WriteInt(waypoint.PosY, 18)
 		net.WriteInt(waypoint.PosZ, 18)
@@ -14,11 +15,12 @@ local function NetTableHandler(tbl, count)
 	end
 end
 
-function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, PosX, PosY, PosZ, r, g, b, count)
+function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, permanent, PosX, PosY, PosZ, r, g, b, count)
 	if !count then count = 1 end
 	local friends = ply:GetFriends()
 	local isTable = istable(name)
 
+	net.Start("chicagoRP_minimap_fetchwaypoints")
 	net.WriteUInt(count, 11) -- Count
 	net.WriteBool(true)
 
@@ -28,6 +30,7 @@ function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, PosX, PosY, Po
 		net.WriteString(name)
 		net.WriteString(UUID)
 		net.WriteString(steamID)
+		net.WriteBool(permanent)
 		net.WriteInt(PosX, 18)
 		net.WriteInt(PosY, 18)
 		net.WriteInt(PosZ, 18)
@@ -44,6 +47,7 @@ function chicagoRPMinimap.NetRemoveHandler(ply, obj, count)
 	local friends = ply:GetFriends()
 	local isTable = istable(obj)
 
+	net.Start("chicagoRP_minimap_fetchwaypoints")
 	net.WriteUInt(count, 11) -- Count
 	net.WriteBool(false)
 

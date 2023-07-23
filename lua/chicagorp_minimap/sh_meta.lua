@@ -33,6 +33,8 @@ end
 -- Arg Two:		Number - Color (G) we want to write.
 -- Arg Three:	Number - Color (B) we want to write.
 function chicagoRPMinimap.WriteColor(r, g, b)
+	if IsColor(r) then r, g, b = r:Unpack() end
+
 	net.WriteUInt(r, 8)
 	net.WriteUInt(g, 8)
 	net.WriteUInt(b, 8)
