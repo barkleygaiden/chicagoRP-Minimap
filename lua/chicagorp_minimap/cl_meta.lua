@@ -124,6 +124,17 @@ local function NetAddHandler(typ, name, pos, color, permanent, uuid)
 	net.SendToServer()
 end
 
+local function NetEditHandler(uuid, waypoint)
+	net.Start("chicagoRP_minimap_waypoint")
+	net.WriteUInt(2, 2)
+	net.WriteString(waypoint.Name) -- Name (String)
+	chicagoRPMinimap.WriteVector(waypoint.Pos) -- Position (Float)
+	chicagoRPMinimap.WriteColor(waypoint.Color) -- Color (Int)
+	net.WriteBool(waypoint.Permanent) -- Permanent? (Vector)
+	net.WriteString(uuid)
+	net.SendToServer()
+end
+
 local function NetRemoveHandler(uuid)
 	net.Start("chicagoRP_minimap_waypoint")
 	net.WriteUInt(3, 2)
@@ -239,23 +250,60 @@ function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, shared, permanent
 	if !string.IsValid(uuid) then return end
 	if !chicagoRPMinimap.IsWaypointOwner(LocalPlayer(), uuid) then return end
 
-	local isLocal = chicagoRPMinimap.IsWaypointLocal(uuid)
-	local isShared = chicagoRPMinimap.IsWaypointShared(uuid)
-	local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid)
+	local isLocal = chicagoRPMinimap.IsWaypointLocal(uuid) -- Clientside lua table
+	local isShared = chicagoRPMinimap.IsWaypointShared(uuid) -- Serverside SQL
+	local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid) -- Clientside SQL if local, Serverside SQL if shared
+	local waypoint = LocalTable[uuid] or SharedTable[uuid]
 
 	if #name > 48 then name = string.Left(name, 48) end
 
-	if isLocal then
-		local waypoint = LocalTable[uuid]
-		local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid)
+	if shared and permanent then
+		if isShared and isPermanent then return end
 
+		if isLocal then -- Clientside waypoint
+			if !isShared and isPermanent then -- Clientside SQL, permanent
+				-- code here
+			else -- Clientside lua table, temporary
+				-- code here
+			end
+		elseif isShared and !isPermanent then -- Serverside waypoint
+			if isPermanent then -- Serverside SQL, permanent
+				-- code here
+			else -- Serverside SQL, temporary
+				-- code here
+			end
+		end
+		-- send net message
+	elseif !shared and !permanent then
+		-- send net message
+	elseif !shared and permanent then
+		-- update clientside sql
+	elseif !shared and !permanent then
+		-- update clientside lua table
+	end
+
+	if isLocal then -- Clientside waypoint
+		if isPermanent then -- Clientside SQL, permanent
+			-- code here
+		else -- Clientside lua table, temporary
+			-- code here
+		end
+	elseif isShared then -- Serverside waypoint
+		if isPermanent then -- Serverside SQL, permanent
+			-- code here
+		else -- Serverside SQL, temporary
+			-- code here
+		end
+	end
+
+
+	if isLocal then
 		if isPermanent then
 			sql.Begin()
 			sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='" .. name .. "', 'PosX'='" .. pos.x .. "', 'PosY='" .. pos.y .. "', 'PosZ'='" .. pos.z .. "', 'ColorR'='" .. color.r .. "', 'ColorG'='" .. color.g .. "', 'ColorB'='" .. color.b .. "' WHERE 'UUID'='" .. UUID .. "'")
 			sql.Commit()
 		end
 
-		local waypoint = LocalTable[uuid]
 		waypoint.Name = name
 		waypoint.Permanent = permanent
 		waypoint.Pos = pos
@@ -263,11 +311,93 @@ function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, shared, permanent
 	elseif isShared then
 		NetAddHandler(2, name, pos, color, permanent, uuid)
 
-		local waypoint = SharedTable[uuid]
 		waypoint.Name = name
 		waypoint.Permanent = permanent
 		waypoint.Pos = pos
 		waypoint.Color = color
+	end
+end
+
+---------------------------------
+-- chicagoRPMinimap.SetName
+---------------------------------
+-- Desc:		Set a waypoint's name.
+-- State:		Shared
+-- Arg One:		String - The UUID of the waypoint we want to edit.
+-- Arg Two:		String - The name we want to set for the waypoint.
+function chicagoRPMinimap.SetName(uuid, name)
+	if !string.IsValid(uuid) then return end
+	if !chicagoRPMinimap.IsWaypointOwner(LocalPlayer(), uuid) then return end
+
+	local isLocal = chicagoRPMinimap.IsWaypointLocal(uuid) -- Clientside lua table
+	local isShared = chicagoRPMinimap.IsWaypointShared(uuid) -- Serverside SQL
+	local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid) -- Clientside SQL if local, Serverside SQL if shared
+	local waypoint = LocalTable[uuid] or SharedTable[uuid]
+
+	if #name > 48 then name = string.Left(name, 48) end
+
+	waypoint.Name = name
+
+	if isLocal and isPermanent then
+		sql.Begin()
+		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='" .. name .. "' WHERE 'UUID'='" .. uuid .. "'")
+		sql.Commit()
+	elseif isShared then
+		NetEditHandler(uuid, waypoint)
+	end
+end
+
+---------------------------------
+-- chicagoRPMinimap.SetPos
+---------------------------------
+-- Desc:		Set a waypoint's position.
+-- State:		Shared
+-- Arg One:		String - The UUID of the waypoint we want to edit.
+-- Arg Two:		Vector - The position we want to set for the waypoint.
+function chicagoRPMinimap.SetPos(uuid, pos)
+	if !string.IsValid(uuid) then return end
+	if !chicagoRPMinimap.IsWaypointOwner(LocalPlayer(), uuid) then return end
+
+	local isLocal = chicagoRPMinimap.IsWaypointLocal(uuid) -- Clientside lua table
+	local isShared = chicagoRPMinimap.IsWaypointShared(uuid) -- Serverside SQL
+	local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid) -- Clientside SQL if local, Serverside SQL if shared
+	local waypoint = LocalTable[uuid] or SharedTable[uuid]
+
+	waypoint.Pos = pos
+
+	if isLocal and isPermanent then
+		sql.Begin()
+		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'PosX'='" .. pos.x .. "', 'PosY='" .. pos.y .. "', 'PosZ'='" .. pos.z .. "' WHERE 'UUID'='" .. uuid .. "'")
+		sql.Commit()
+	elseif isShared then
+		NetEditHandler(uuid, waypoint)
+	end
+end
+
+---------------------------------
+-- chicagoRPMinimap.SetColor
+---------------------------------
+-- Desc:		Set a waypoint's color.
+-- State:		Shared
+-- Arg One:		String - The UUID of the waypoint we want to edit.
+-- Arg Two:		String - The color we want to set for the waypoint.
+function chicagoRPMinimap.SetColor(uuid, color)
+	if !string.IsValid(uuid) then return end
+	if !chicagoRPMinimap.IsWaypointOwner(LocalPlayer(), uuid) then return end
+
+	local isLocal = chicagoRPMinimap.IsWaypointLocal(uuid) -- Clientside lua table
+	local isShared = chicagoRPMinimap.IsWaypointShared(uuid) -- Serverside SQL
+	local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid) -- Clientside SQL if local, Serverside SQL if shared
+	local waypoint = LocalTable[uuid] or SharedTable[uuid]
+
+	waypoint.Color = color
+
+	if isLocal and isPermanent then
+		sql.Begin()
+		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'ColorR'='" .. color.r .. "', 'ColorG='" .. color.g .. "', 'ColorB'='" .. color.b .. "' WHERE 'UUID'='" .. uuid .. "'")
+		sql.Commit()
+	elseif isShared then
+		NetEditHandler(uuid, waypoint)
 	end
 end
 
