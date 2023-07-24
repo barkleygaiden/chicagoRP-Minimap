@@ -11,7 +11,7 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
--- Serverside CreateWaypoint, EditWaypoint, DeleteWaypoint
+-- Serverside EditWaypoint
 -- Waypoint button self values
 
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)

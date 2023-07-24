@@ -8,10 +8,12 @@ chicagoRPMinimap = chicagoRPMinimap or {}
 -- Desc:		Writes a vector using the net library.
 -- State:		Shared
 -- Arg One:		Vector - Vector we want to write.
-function chicagoRPMinimap.WriteVector(vect)
-	net.WriteFloat(vect.x)
-	net.WriteFloat(vect.y)
-	net.WriteFloat(vect.z)
+function chicagoRPMinimap.WriteVector(x, y, z)
+	if isvector(x) then x, y, z = x.x, x.y, x.z end
+
+	net.WriteFloat(x)
+	net.WriteFloat(y)
+	net.WriteFloat(z)
 end
 
 ---------------------------------
@@ -41,7 +43,7 @@ function chicagoRPMinimap.WriteColor(r, g, b)
 end
 
 ---------------------------------
--- chicagoRPMinimap.ReadVector
+-- chicagoRPMinimap.ReadColor
 ---------------------------------
 -- Desc:		Reads a color using the net library.
 -- State:		Shared

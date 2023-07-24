@@ -249,7 +249,8 @@ function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, shared, permanent
 
 	-- We have to recreate the waypoint rather than editing it.
 	-- Trying to update it while accounting for new shared/permanent status
-	-- resulted in shitcode, so I went with the recreation approach.
+	-- resulted in shitcode, so I went with the recreation approach which
+	-- is also bad but is at least kinda readable.
 
 	if isShared and shared then
 		NetEditAllHandler(uuid, name, pos, color, permanent) -- Deletes and recreates waypoint

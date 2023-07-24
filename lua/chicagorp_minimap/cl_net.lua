@@ -19,6 +19,7 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 		else
 			local UUID = net.ReadString()
 
+			LocalTable[UUID] = nil
 			SharedTable[UUID] = nil
 		end
 	end
@@ -42,5 +43,39 @@ net.Receive("chicagoRP_minimap_transferwaypoints", function(len)
 		local UUID = waypoint.UUID
 
 		LocalTable[UUID] = nil
+	end
+end)
+
+local function QuickDelete(uuid)
+	LocalTable[UUID] = nil
+	SharedTable[UUID] = nil
+
+	sql.Begin()
+	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+	sql.Commit()
+end
+
+net.Receive("chicagoRP_minimap_localwaypoint", function(len)
+	local add = net.ReadBool()
+	local isSQL = net.ReadBool()
+
+	if isSQL and add then
+		local name = net.ReadString()
+		local pos = Vector(chicagoRPMinimap.ReadVector())
+		local color = Color(chicagoRPMinimap.ReadColor())
+
+		chicagoRPMinimap.CreateWaypoint(name, pos, color, false, true)
+	elseif !isSQL and add then
+		local name = net.ReadString()
+		local pos = Vector(chicagoRPMinimap.ReadVector())
+		local color = Color(chicagoRPMinimap.ReadColor())
+
+		chicagoRPMinimap.CreateWaypoint(name, pos, color, false, false)
+	end
+
+	if !add then
+		local UUID = net.ReadString()
+
+		QuickDelete(uuid)
 	end
 end)
