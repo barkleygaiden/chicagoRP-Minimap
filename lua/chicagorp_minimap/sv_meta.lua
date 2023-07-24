@@ -17,8 +17,10 @@ end
 
 function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, permanent, PosX, PosY, PosZ, r, g, b, count)
 	if !count then count = 1 end
-	local friends = ply:GetFriends()
+	local friends = chicagoRP.GetFriends(ply)
 	local isTable = istable(name)
+
+	if !chicagoRP.HasFriends(ply) then return end
 
 	net.Start("chicagoRP_minimap_fetchwaypoints")
 	net.WriteUInt(count, 11) -- Count
@@ -44,8 +46,10 @@ end
 
 function chicagoRPMinimap.NetRemoveHandler(ply, obj, count)
 	if !count then count = 1 end
-	local friends = ply:GetFriends()
+	local friends = chicagoRP.GetFriends(ply)
 	local isTable = istable(obj)
+
+	if !chicagoRP.HasFriends(ply) then return end
 
 	net.Start("chicagoRP_minimap_fetchwaypoints")
 	net.WriteUInt(count, 11) -- Count
