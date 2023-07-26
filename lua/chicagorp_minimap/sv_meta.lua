@@ -1,90 +1,14 @@
-local function NetTableHandler(tbl, count)
-	for i = 1, count do
-		local waypoint = tbl[i]
-
-		net.WriteString(waypoint.Name)
-		net.WriteString(waypoint.UUID)
-		net.WriteString(waypoint.Owner)
-		net.WriteBool(waypoint.Permanent)
-		chicagoRPMinimap.WriteVector(waypoint.PosX, waypoint.PosY, waypoint.PosZ)
-		chicagoRPMinimap.WriteColor(waypoint.ColorR, waypoint.ColorG, waypoint.ColorB)
-	end
-end
-
-function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, permanent, PosX, PosY, PosZ, r, g, b, count)
-	if !count then count = 1 end
-	local friends = chicagoRP.GetFriends(ply)
-	local isTable = istable(name)
-
-	table.insert(friends, ply) -- Insert player
-
-	net.Start("chicagoRP_minimap_fetchwaypoints")
-	net.WriteUInt(count, 11) -- Count
-	net.WriteBool(true)
-
-	if isTable then 
-		NetTableHandler(name, #name)
-	else
-		net.WriteString(name)
-		net.WriteString(UUID)
-		net.WriteString(steamID)
-		net.WriteBool(permanent)
-		chicagoRPMinimap.WriteVector(PosX, PosY, PosZ)
-		chicagoRPMinimap.WriteColor(r, g, b)
-	end
-
-	net.Send(friends)
-end
-
-function chicagoRPMinimap.NetAddClientHandler(ply, name, permanent, PosX, PosY, PosZ, r, g, b)
-	net.Start("chicagoRP_minimap_localwaypoint")
-	net.WriteBool(true)
-	net.WriteBool(permanent)
-	net.WriteString(name)
-	chicagoRPMinimap.WriteVector(PosX, PosY, PosZ)
-	chicagoRPMinimap.WriteColor(r, g, b)
-	net.Send(ply)
-end
-
-function chicagoRPMinimap.NetRemoveHandler(ply, obj, count)
-	if !count then count = 1 end
-	local friends = chicagoRP.GetFriends(ply)
-	local isTable = istable(obj)
-
-	table.insert(friends, ply) -- Insert player
-
-	net.Start("chicagoRP_minimap_fetchwaypoints")
-	net.WriteUInt(count, 11) -- Count
-	net.WriteBool(false)
-
-	for i = 1, count do
-		local UUID = (isTable and obj[i]) or obj
-
-		net.WriteString(UUID)
-	end
-
-	net.Send(friends)
-end
-
-function chicagoRPMinimap.NetRemoveClientHandler(ply, uuid)
-	net.Start("chicagoRP_minimap_localwaypoint")
-	net.WriteBool(false)
-	net.WriteBool(false)
-	net.WriteString(uuid)
-	net.Send(ply)
-end
-
 ---------------------------------
 -- chicagoRPMinimap.CreateWaypoint
 ---------------------------------
 -- Desc:		Create a waypoint.
--- State:		Client
 -- State:		Shared
--- Arg One:		String - The waypoint's name.
--- Arg Two:		Vector - The waypoint's world position.
--- Arg Three:	Color - The waypoint's color.
--- Arg Four:	Bool - Whether to make the waypoint shared with friends or not.
--- Arg Five:	Bool - Whether to make the waypoint permanent or not.
+-- Arg One:		Entity - The player we want set the waypoint's owner to.
+-- Arg Two:		String - The waypoint's name.
+-- Arg Three:	Vector - The waypoint's world position.
+-- Arg Four:	Color - The waypoint's color.
+-- Arg Five:	Bool - Whether to make the waypoint shared with friends or not.
+-- Arg Six:		Bool - Whether to make the waypoint permanent or not.
 function chicagoRPMinimap.CreateWaypoint(ply, name, pos, color, shared, permanent)
 	if !string.IsValid(name) then name = "Waypoint" end
 	if !shared then shared = false end
@@ -113,11 +37,26 @@ end
 ---------------------------------
 -- chicagoRPMinimap.EditWaypoint
 ---------------------------------
--- Desc:		Create a waypoint.
--- State:		Client
--- Arg One:		String - The waypoint's name.
-function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, shared, permanent)
-	-- codehere
+-- Desc:		Edit a shared waypoint.
+-- State:		Shared
+-- Arg One:		String - The waypoint's UUID.
+-- Arg Two:		Vector - The waypoint's name.
+-- Arg Three:	Color - The waypoint's color.
+-- Arg Four:	Bool - Whether to make the waypoint permanent or not.
+function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, permanent)
+	if !uuid or !string.IsValid(uuid) then return end
+
+	local SharedWaypoint = IsWaypointShared(uuid)
+
+	if !SharedWaypoint then return end
+
+	local name = name or SharedWaypoint.Name
+	local PosX, PosY, PosZ = (pos.x, pos.y, pos.z) or (SharedWaypoint.PosX, SharedWaypoint.PosY, SharedWaypoint.PosZ)
+	local r, g, b = (color.r, color.g, color.b) or (SharedWaypoint.ColorR, SharedWaypoint.ColorG, SharedWaypoint.ColorB)
+
+	sql.Begin()
+	sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='" .. name .. "', 'Permanent'='" .. tostring(tonumber(permanent)) .. "', 'PosX'='" .. PosX .. "', 'PosY='" .. PosY .. "', 'PosZ'='" .. PosZ .. "', 'ColorR'='" .. r .. "', 'ColorG'='" .. g .. "', 'ColorB'='" .. b .. "' WHERE 'UUID'='" .. UUID .. "'")
+	sql.Commit()
 end
 
 ---------------------------------
@@ -126,7 +65,7 @@ end
 -- Desc:		Delete a waypoint.
 -- State:		Shared
 -- Arg One:		String - The UUID of the waypoint we want to delete.
--- Arg Two:		Entity - The player that owns the waypoint.
+-- Arg Two:		Entity - The player that owns the waypoint, only required for non-shared waypoints.
 function chicagoRPMinimap.DeleteWaypoint(uuid, ply)
 	if !chicagoRPMinimap.IsWaypointOwner(ply, uuid) then return end
 
@@ -140,6 +79,13 @@ function chicagoRPMinimap.DeleteWaypoint(uuid, ply)
 	chicagoRPMinimap.NetRemoveClientHandler(ply, uuid)
 end
 
+---------------------------------
+-- chicagoRPMinimap.IsWaypointOwner
+---------------------------------
+-- Desc:		Checks if a waypoint is owned by the player.
+-- State:		Shared
+-- Arg One:		Entity - The player to check.
+-- Arg Two:		String - The UUID of the waypoint we want to check.
 function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
 	local steamID = ply:SteamID64()
 
@@ -148,6 +94,22 @@ function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
 	sql.Commit()
 
 	return (!isOwner and false) or true -- We do it this way to account for local waypoints
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointShared
+---------------------------------
+-- Desc:		Checks whether a waypoint is shared or not.
+-- State:		Server
+-- Arg One:		String - The UUID of the waypoint we want to check.
+local function IsWaypointShared(uuid)
+	if !uuid or !string.IsValid(uuid) then return end
+
+	sql.Begin()
+	local waypoint = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. UUID .. "'")
+	sql.Commit()
+
+	return waypoint
 end
 
 hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()

@@ -11,9 +11,6 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
--- Serverside EditWaypoint
--- Waypoint button self values
-
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	local dropdown = DermaMenu(false, parent)
 	dropdown:NoClipping(true)

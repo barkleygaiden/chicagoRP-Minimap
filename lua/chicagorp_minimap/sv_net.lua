@@ -1,9 +1,84 @@
 util.AddNetworkString("chicagoRP_minimap_waypoint") -- Client to Server
 util.AddNetworkString("chicagoRP_minimap_editwaypoint")
-
 util.AddNetworkString("chicagoRP_minimap_fetchwaypoints") -- Server to Client
 util.AddNetworkString("chicagoRP_minimap_clearwaypoints")
 util.AddNetworkString("chicagoRP_minimap_localwaypoint")
+
+local function NetTableHandler(tbl, count)
+	for i = 1, count do
+		local waypoint = tbl[i]
+
+		net.WriteString(waypoint.Name)
+		net.WriteString(waypoint.UUID)
+		net.WriteString(waypoint.Owner)
+		net.WriteBool(waypoint.Permanent)
+		chicagoRPMinimap.WriteVector(waypoint.PosX, waypoint.PosY, waypoint.PosZ)
+		chicagoRPMinimap.WriteColor(waypoint.ColorR, waypoint.ColorG, waypoint.ColorB)
+	end
+end
+
+function chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, permanent, PosX, PosY, PosZ, r, g, b, count)
+	if !count then count = 1 end
+	local friends = chicagoRP.GetFriends(ply)
+	local isTable = istable(name)
+
+	table.insert(friends, ply) -- Insert player
+
+	net.Start("chicagoRP_minimap_fetchwaypoints")
+	net.WriteUInt(count, 11) -- Count
+	net.WriteBool(true)
+
+	if isTable then 
+		NetTableHandler(name, #name)
+	else
+		net.WriteString(name)
+		net.WriteString(UUID)
+		net.WriteString(steamID)
+		net.WriteBool(permanent)
+		chicagoRPMinimap.WriteVector(PosX, PosY, PosZ)
+		chicagoRPMinimap.WriteColor(r, g, b)
+	end
+
+	net.Send(friends)
+end
+
+function chicagoRPMinimap.NetAddClientHandler(ply, name, permanent, PosX, PosY, PosZ, r, g, b)
+	net.Start("chicagoRP_minimap_localwaypoint")
+	net.WriteBool(true)
+	net.WriteBool(permanent)
+	net.WriteString(name)
+	chicagoRPMinimap.WriteVector(PosX, PosY, PosZ)
+	chicagoRPMinimap.WriteColor(r, g, b)
+	net.Send(ply)
+end
+
+function chicagoRPMinimap.NetRemoveHandler(ply, obj, count)
+	if !count then count = 1 end
+	local friends = chicagoRP.GetFriends(ply)
+	local isTable = istable(obj)
+
+	table.insert(friends, ply) -- Insert player
+
+	net.Start("chicagoRP_minimap_fetchwaypoints")
+	net.WriteUInt(count, 11) -- Count
+	net.WriteBool(false)
+
+	for i = 1, count do
+		local UUID = (isTable and obj[i]) or obj
+
+		net.WriteString(UUID)
+	end
+
+	net.Send(friends)
+end
+
+function chicagoRPMinimap.NetRemoveClientHandler(ply, uuid)
+	net.Start("chicagoRP_minimap_localwaypoint")
+	net.WriteBool(false)
+	net.WriteBool(false)
+	net.WriteString(uuid)
+	net.Send(ply)
+end
 
 net.Receive("chicagoRP_minimap_waypoint", function(len, ply)
 	local Time = CurTime()

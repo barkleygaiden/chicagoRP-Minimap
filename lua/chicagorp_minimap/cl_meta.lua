@@ -4,109 +4,6 @@ chicagoRPMinimap.SharedWaypoints = chicagoRPMinimap.SharedWaypoints or {}
 local LocalTable = chicagoRPMinimap.LocalWaypoints
 local SharedTable = chicagoRPMinimap.SharedWaypoints
 
-hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
-	local MapName = chicagoRPMinimap.GetMapName()
-
-	sql.Begin()
-	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96), 'Map' VARCHAR(32), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. MapName .. "'")
-	sql.Commit()
-
-	if !waypoints then return end
-
-	for i = 1, #waypoints do
-		local waypoint = waypoints[i]
-		local UUID = waypoint.UUID
-
-		LocalTable[UUID] = waypoint
-	end
-end)
-
-local startPos = Vector(0, 0, 0)
-local endPos = Vector(0, 0, -32768)
-
----------------------------------
--- chicagoRPMinimap.LocaltoWorld
----------------------------------
--- Desc:		Returns the world position of a specified coordinate.
--- State:		Client
--- Arg One:		Panel  - The map view panel.
--- Arg Two:		Number - The horizontal position.
--- Arg Three:	Number - The vertical position.
--- Returns:		Vector - The world position of the specified position.
-function chicagoRPMinimap.LocaltoWorld(x, y)
-	local panel = chicagoRPMinimap.OpenMapPanel
-
-	chicagoRPMinimap.ResetVector(startPos)
-
-	local mx, my = panel:ScreenToLocal(x, y) -- Pass the mouse into the panel coordinates
-
-	startPos.x = (mx + panel.Offset.x) * panel.MapScale -- Adds the map offset and then scale it to the scale of your minimap
-	startPos.y = (my + panel.Offset.y) * panel.MapScale
-	startPos.z = panel.traceHeight or 10
-
-	local tr = {}
-	tr.start = startPos
-	tr.endpos = endPos
-	tr.mask = MASK_SOLID_BRUSHONLY
-
-	local trace = util.TraceLine(tr)
-	local worldPosition = Vector(startPos.x, startPos.y, trace.HitPos.z)
-
-	return worldPosition
-end
-
----------------------------------
--- chicagoRPMinimap.WorldToLocal
----------------------------------
--- Desc:		Returns the local position of a world vector.
--- State:		Client
--- Arg One:		Vector - World position.
--- Returns:		Vector - The local position of the specified world vector.
-function chicagoRPMinimap.WorldToLocal(vect)
-	-- blackbox
-end
-
----------------------------------
--- chicagoRPMinimap.OnWaypoint
----------------------------------
--- Desc:		Returns whether the mouse cursor is hovering over a waypoint or not.
--- State:		Client
--- Returns:		Bool - True if a waypoint is hovered over.
--- Returns:		Panel - The waypoint being hovered over.
-function chicagoRPMinimap.OnWaypoint()
-	local hoveredPanel = vgui.GetHoveredPanel()
-
-	if !IsValid(hoveredPanel) then return false end
-
-	return hoveredPanel.IsWaypoint
-end
-
----------------------------------
--- chicagoRPMinimap.ShortenWaypointName
----------------------------------
--- Desc:		Shortens a waypoint's name.
--- State:		Client
--- Arg One:		String - The waypoint's standard name.
--- Returns:		String - The waypoint's shortened name.
-function chicagoRPMinimap.ShortenWaypointName(str)
-	local shortstr = ""
-
-	local paren = string.Split(str, " (")
-	str = (paren and paren[1]) or str
-
-	local exploded = string.Explode(" ", str)
-
-	for i = 1, #exploded do
-		local word = string.upper(exploded[i])
-		local letter = string.Left(letter, 2)
-
-		shortstr = shortstr .. letter
-	end
-
-	return shortstr
-end
-
 local function NetAddHandler(typ, name, pos, color, permanent, uuid)
 	if typ > 2 then typ = 1 end
 
@@ -121,34 +18,6 @@ local function NetAddHandler(typ, name, pos, color, permanent, uuid)
 		net.WriteString(uuid)
 	end
 
-	net.SendToServer()
-end
-
-local function NetEditAllHandler(uuid, name, pos, color, permanent)
-	net.Start("chicagoRP_minimap_editwaypoint")
-	net.WriteString(name) -- Name (String)
-	chicagoRPMinimap.WriteVector(pos) -- Position (Float)
-	chicagoRPMinimap.WriteColor(color) -- Color (Int)
-	net.WriteBool(permanent) -- Permanent? (Bool)
-	net.WriteString(uuid)
-	net.SendToServer()
-end
-
-local function NetEditValueHandler(uuid, waypoint)
-	net.Start("chicagoRP_minimap_waypoint")
-	net.WriteUInt(2, 2)
-	net.WriteString(waypoint.Name) -- Name (String)
-	chicagoRPMinimap.WriteVector(waypoint.Pos) -- Position (Float)
-	chicagoRPMinimap.WriteColor(waypoint.Color) -- Color (Int)
-	net.WriteBool(waypoint.Permanent) -- Permanent? (Vector)
-	net.WriteString(uuid)
-	net.SendToServer()
-end
-
-local function NetRemoveHandler(uuid)
-	net.Start("chicagoRP_minimap_waypoint")
-	net.WriteUInt(3, 2)
-	net.WriteString(uuid)
 	net.SendToServer()
 end
 
@@ -215,16 +84,14 @@ function chicagoRPMinimap.CreateWaypoint(name, pos, color, shared, permanent)
 	end
 end
 
-local function CopyWaypointTable(tbl, permanent)
-	local newWaypoint = {}
-	setmetatable(newWaypoint, debug.getmetatable(tbl))
-	newWaypoint.Name = tbl.Name
-	newWaypoint.UUID = tbl.UUID
-	newWaypoint.Permanent = permanent
-	newWaypoint.Pos = tbl.Pos
-	newWaypoint.Color = tbl.Color
-
-	return newWaypoint
+local function NetEditAllHandler(uuid, name, pos, color, permanent)
+	net.Start("chicagoRP_minimap_editwaypoint")
+	net.WriteString(name) -- Name (String)
+	chicagoRPMinimap.WriteVector(pos) -- Position (Float)
+	chicagoRPMinimap.WriteColor(color) -- Color (Int)
+	net.WriteBool(permanent) -- Permanent? (Bool)
+	net.WriteString(uuid)
+	net.SendToServer()
 end
 
 ---------------------------------
@@ -277,6 +144,13 @@ function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, shared, permanent
 	end
 end
 
+local function NetRemoveHandler(uuid)
+	net.Start("chicagoRP_minimap_waypoint")
+	net.WriteUInt(3, 2)
+	net.WriteString(uuid)
+	net.SendToServer()
+end
+
 ---------------------------------
 -- chicagoRPMinimap.DeleteWaypoint
 ---------------------------------
@@ -305,6 +179,75 @@ function chicagoRPMinimap.DeleteWaypoint(uuid)
 
 		SharedTable[uuid] = nil
 	end
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointOwner
+---------------------------------
+-- Desc:		Checks if a waypoint is owned by the player.
+-- State:		Shared
+-- Arg One:		Entity - The player to check.
+-- Arg Two:		String - The UUID of the waypoint we want to check.
+function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
+	if !string.IsValid(uuid) then return false end
+
+	local SharedWaypoint = SharedTable[uuid]
+
+	return LocalTable[uuid] or (SharedWaypoint and ply:SteamID64() == SharedWaypoint.Owner)
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointLocal
+---------------------------------
+-- Desc:		Checks whether a waypoint is local or not.
+-- State:		Client
+-- Arg One:		String - The UUID of the waypoint we want to check.
+function chicagoRPMinimap.IsWaypointLocal(uuid)
+	if !string.IsValid(uuid) then return false end
+
+	local LocalWaypoint = LocalTable[uuid]
+
+	return istable(LocalWaypoint)
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointShared
+---------------------------------
+-- Desc:		Checks whether a waypoint is shared or not.
+-- State:		Shared
+-- Arg One:		String - The UUID of the waypoint we want to check.
+function chicagoRPMinimap.IsWaypointShared(uuid)
+	if !string.IsValid(uuid) then return false end
+
+	local SharedWaypoint = SharedTable[uuid]
+
+	return istable(SharedWaypoint)
+end
+
+---------------------------------
+-- chicagoRPMinimap.IsWaypointPermanent
+---------------------------------
+-- Desc:		Checks whether a waypoint is permanent or not.
+-- State:		Client
+-- Arg One:		String - The UUID of the waypoint we want to check.
+function chicagoRPMinimap.IsWaypointPermanent(uuid)
+	if !string.IsValid(uuid) then return false end
+
+	local LocalWaypoint = LocalTable[uuid]
+	local SharedWaypoint = SharedTable[uuid]
+
+	return LocalWaypoint.Permanent or SharedWaypoint.Permanent or false
+end
+
+local function NetEditValueHandler(uuid, waypoint)
+	net.Start("chicagoRP_minimap_waypoint")
+	net.WriteUInt(2, 2)
+	net.WriteString(waypoint.Name) -- Name (String)
+	chicagoRPMinimap.WriteVector(waypoint.Pos) -- Position (Float)
+	chicagoRPMinimap.WriteColor(waypoint.Color) -- Color (Int)
+	net.WriteBool(waypoint.Permanent) -- Permanent? (Vector)
+	net.WriteString(uuid)
+	net.SendToServer()
 end
 
 ---------------------------------
@@ -388,59 +331,105 @@ function chicagoRPMinimap.SetColor(uuid, color)
 end
 
 ---------------------------------
--- chicagoRPMinimap.IsWaypointOwner
+-- chicagoRPMinimap.OnWaypoint
 ---------------------------------
--- Desc:		Check if a waypoint is owned by the player.
--- State:		Shared
--- Arg One:		Entity - The player to check.
--- Arg Two:		String - The UUID of the waypoint we want to check.
-function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
-	if !string.IsValid(uuid) then return false end
-
-	local SharedWaypoint = SharedTable[uuid]
-
-	return LocalTable[uuid] or (SharedWaypoint and ply:SteamID64() == SharedWaypoint.Owner)
-end
-
----------------------------------
--- chicagoRPMinimap.IsWaypointLocal
----------------------------------
--- Desc:		Checks whether a waypoint is local or not.
+-- Desc:		Returns whether the mouse cursor is hovering over a waypoint or not.
 -- State:		Client
--- Arg One:		String - The UUID of the waypoint we want to check.
-function chicagoRPMinimap.IsWaypointLocal(uuid)
-	if !string.IsValid(uuid) then return false end
+-- Returns:		Bool - True if a waypoint is hovered over.
+-- Returns:		Panel - The waypoint being hovered over.
+function chicagoRPMinimap.OnWaypoint()
+	local hoveredPanel = vgui.GetHoveredPanel()
 
-	local LocalWaypoint = LocalTable[uuid]
+	if !IsValid(hoveredPanel) then return false end
 
-	return istable(LocalWaypoint)
+	return hoveredPanel.IsWaypoint
 end
 
+local startPos = Vector(0, 0, 0)
+local endPos = Vector(0, 0, -32768)
+
 ---------------------------------
--- chicagoRPMinimap.IsWaypointShared
+-- chicagoRPMinimap.LocaltoWorld
 ---------------------------------
--- Desc:		Checks whether a waypoint is shared or not.
+-- Desc:		Returns the world position of a specified coordinate.
 -- State:		Client
--- Arg One:		String - The UUID of the waypoint we want to check.
-function chicagoRPMinimap.IsWaypointShared(uuid)
-	if !string.IsValid(uuid) then return false end
+-- Arg One:		Panel  - The map view panel.
+-- Arg Two:		Number - The horizontal position.
+-- Arg Three:	Number - The vertical position.
+-- Returns:		Vector - The world position of the specified position.
+function chicagoRPMinimap.LocaltoWorld(x, y)
+	local panel = chicagoRPMinimap.OpenMapPanel
 
-	local SharedWaypoint = SharedTable[uuid]
+	chicagoRPMinimap.ResetVector(startPos)
 
-	return istable(SharedWaypoint)
+	local mx, my = panel:ScreenToLocal(x, y) -- Pass the mouse into the panel coordinates
+
+	startPos.x = (mx + panel.Offset.x) * panel.MapScale -- Adds the map offset and then scale it to the scale of your minimap
+	startPos.y = (my + panel.Offset.y) * panel.MapScale
+	startPos.z = panel.traceHeight or 10
+
+	local tr = {}
+	tr.start = startPos
+	tr.endpos = endPos
+	tr.mask = MASK_SOLID_BRUSHONLY
+
+	local trace = util.TraceLine(tr)
+	local worldPosition = Vector(startPos.x, startPos.y, trace.HitPos.z)
+
+	return worldPosition
 end
 
 ---------------------------------
--- chicagoRPMinimap.IsWaypointPermanent
+-- chicagoRPMinimap.WorldToLocal
 ---------------------------------
--- Desc:		Checks whether a waypoint is permanent or not.
+-- Desc:		Returns the local position of a world vector.
 -- State:		Client
--- Arg One:		String - The UUID of the waypoint we want to check.
-function chicagoRPMinimap.IsWaypointPermanent(uuid)
-	if !string.IsValid(uuid) then return false end
-
-	local LocalWaypoint = LocalTable[uuid]
-	local SharedWaypoint = SharedTable[uuid]
-
-	return LocalWaypoint.Permanent or SharedWaypoint.Permanent or false
+-- Arg One:		Vector - World position.
+-- Returns:		Vector - The local position of the specified world vector.
+function chicagoRPMinimap.WorldToLocal(vect)
+	-- blackbox
 end
+
+---------------------------------
+-- chicagoRPMinimap.ShortenWaypointName
+---------------------------------
+-- Desc:		Shortens a waypoint's name.
+-- State:		Client
+-- Arg One:		String - The waypoint's standard name.
+-- Returns:		String - The waypoint's shortened name.
+function chicagoRPMinimap.ShortenWaypointName(str)
+	local shortstr = ""
+
+	local paren = string.Split(str, " (")
+	str = (paren and paren[1]) or str
+
+	local exploded = string.Explode(" ", str)
+
+	for i = 1, #exploded do
+		local word = string.upper(exploded[i])
+		local letter = string.Left(letter, 2)
+
+		shortstr = shortstr .. letter
+	end
+
+	return shortstr
+end
+
+
+hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
+	local MapName = chicagoRPMinimap.GetMapName()
+
+	sql.Begin()
+	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96), 'Map' VARCHAR(32), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. MapName .. "'")
+	sql.Commit()
+
+	if !waypoints then return end
+
+	for i = 1, #waypoints do
+		local waypoint = waypoints[i]
+		local UUID = waypoint.UUID
+
+		LocalTable[UUID] = waypoint
+	end
+end)
