@@ -23,7 +23,7 @@ end
 -- State:		Shared
 -- Returns:		Numbers - Vector values from net message.
 function chicagoRPMinimap.ReadVector()
-	return net.ReadFloat(), net.ReadFloat(), net.ReadFloat()
+	return math.Round(net.ReadFloat(), 2), math.Round(net.ReadFloat(), 2), math.Round(net.ReadFloat(), 2)
 end
 
 ---------------------------------
