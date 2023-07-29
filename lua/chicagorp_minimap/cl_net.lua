@@ -16,6 +16,8 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 			waypoint.Color = Color(chicagoRPMinimap.ReadColor())
 
 			SharedTable[waypoint.UUID] = waypoint
+
+			chicagoRPMinimap.WaypointButton(chicagoRPMinimap.OpenMapPanel, x, y, w, h, waypoint) -- FIX PLEASE!!!
 		else
 			local UUID = net.ReadString()
 

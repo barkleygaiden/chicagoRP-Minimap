@@ -11,7 +11,9 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
-local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
+local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY, uuid)
+	if !IsValid(parent) then return end
+
 	local dropdown = DermaMenu(false, parent)
 	dropdown:NoClipping(true)
 
@@ -30,7 +32,7 @@ local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	removeWaypoint:SetIsCheckable(false)
 
 	function removeWaypoint:DoClick()
-		-- code here
+		chicagoRPMinimap.DeleteWaypoint(uuid)
 	end
 
 	if !onwaypoint then removeWaypoint:SetDisabled(true) end
@@ -40,24 +42,27 @@ local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY)
 	return dropdown
 end
 
-function chicagoRPMinimap.WaypointButton(parent, x, y, w, h, name, color)
+function chicagoRPMinimap.WaypointButton(parent, x, y, w, h, waypoint)
+	if !IsValid(parent) then return end
+
 	local button = vgui.Create("DButton", parent)
 	button:SetSize(w, h)
 	button:SetPos(x, y)
 
-	local concatname = chicagoRPMinimap.ShortenWaypointName(name)
+	local concatname = chicagoRPMinimap.ShortenWaypointName(waypoint.Name)
 
 	function button:Init()
 		self.IsWaypoint = true
+		self.UUID = waypoint.UUID
 	end
 
 	function button:Paint(w, h)
-		draw.RoundedBox(4, 0, 0, 0, w, h, color)
+		draw.RoundedBox(4, 0, 0, 0, w, h, waypoint.Color)
 		draw.SimpleText(concatname, "DermaDefault", 0, 0, color_white)
 	end
 
 	function button:DoClick()
-		WaypointDropdown(parent, true)
+		WaypointDropdown(parent, true, input.GetCursorPos(), self.UUID)
 	end
 
 	return button
@@ -91,22 +96,20 @@ function chicagoRPMinimap.WaypointCreation(mouseX, mouseY)
 	local colorMixer = dialog:Add("DColorMixer")
 
 	function dialogBox:OnAccept()
-		local mapPanel = chicagoRPMinimap.OpenMapPanel
-		local waypointName = nameInput:GetText()
-		local waypointColor = colorMixer:GetColor()
-		local isShared = localCheckbox:GetChecked()
-		local isPermanent = permanentCheckbox:GetChecked()
-		local worldPosition = chicagoRPMinimap.LocalToWorld(mouseX, mouseY)
+		local name = nameInput:GetText()
+		local pos = chicagoRPMinimap.LocalToWorld(mouseX, mouseY)
+		local color = colorMixer:GetColor()
+		local shared = localCheckbox:GetChecked()
+		local permanent = permanentCheckbox:GetChecked()
 
-		chicagoRPMinimap.CreateWaypoint(waypointName, worldPosition, waypointColor, isShared, isPermanent)
-		chicagoRPMinimap.WaypointButton(mapPanel, pos, w, h, waypointName, waypointColor)
+		chicagoRPMinimap.CreateWaypoint(name, pos, waypointColor, shared, permanent)
 	end
 
 	return dialogBox
 end
 
 local function MinimapFrame()
-    if IsValid(OpenMotherFrame) then OpenMotherFrame:Close() return end
+    if IsValid(chicagoRPMinimap.OpenMapPanel) then chicagoRPMinimap.OpenMapPanel:Close() return end
     if !IsValid(ply) then return end
     if !enabled then return end
 
@@ -144,12 +147,6 @@ local function CreateOrigin(vect)
 	cameraOrigin = plyPos + originAdd
 end
 
--- Add ortho to render.RenderView
--- Zoom functionality (somewhat done, needs to be rewritten to use ortho)
--- Translating coordinates from Minimap panel to real world, and vise versa (kinda done, test ingame)
--- Cave mode (run trace to ceiling if not outside)
--- Waypoint system (aim for basic ones, add/remove and done via sql, unfilled circles drawn in hudpaint/postopaquerenderables hook)
-
 local cameraAngle = Angle(-90, 0, 0)
 
 local function MinimapPanel(parent)
@@ -173,7 +170,7 @@ local function MinimapPanel(parent)
 		local x, y = self:GetPos()
 
 		local old = DisableClipping(true) -- Avoid issues introduced by the natural clipping of Panel rendering
-		render.SetBlend(0)
+		render.SetBlend(0) -- Hide entities
 
 		render.RenderView({
 			origin = cameraOrigin,
@@ -183,7 +180,7 @@ local function MinimapPanel(parent)
 			w = w, h = h
 		})
 
-		render.SetBlend(1)
+		render.SetBlend(1) -- Unhide entities
 		DisableClipping(old)
 	end
 
