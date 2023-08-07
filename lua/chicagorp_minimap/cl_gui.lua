@@ -115,6 +115,7 @@ local function CalculateChunks() -- Calculates render.RenderView positions, find
 	-- so lowest worldMin.x and lowest worldMax.y
 
 	-- Scenarios:
+	-- worldMin.x = -100, worldMin.y = 0, worldMax.x = 250, worldMax.y = 10
 	-- worldMin.x = 0, worldMin.y = -100, worldMax.x = 10, worldMax.y = 250
 	-- worldMin.x = -3453, worldMin.y = -9876, worldMax.x = 345, worldMax.y = 7658
 
