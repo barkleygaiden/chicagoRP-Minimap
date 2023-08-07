@@ -11,9 +11,9 @@ chicagoRPMinimap = chicagoRPMinimap or {}
 function chicagoRPMinimap.WriteVector(x, y, z)
 	if isvector(x) then x, y, z = x.x, x.y, x.z end
 
-	net.WriteFloat(x)
-	net.WriteFloat(y)
-	net.WriteFloat(z)
+	net.WriteFloat(math.Round(x, 2))
+	net.WriteFloat(math.Round(y, 2))
+	net.WriteFloat(math.Round(z, 2))
 end
 
 ---------------------------------
@@ -65,16 +65,18 @@ function chicagoRPMinimap.ResetVector(vect)
 end
 
 ---------------------------------
--- chicagoRPMinimap.GetAllWaypoints
+-- chicagoRPMinimap.CreatePVS
 ---------------------------------
--- Desc:		Gets all the current waypoints.
+-- Desc:		Create PVS object.
 -- State:		Shared
--- Returns:		Table - All current waypoints.
-function chicagoRPMinimap.GetAllWaypoints()
-	return {}
+-- Returns:		PVS - A new PVS object.
+function chicagoRPMinimap.CreatePVS()
+	local bsp = NikNaks.CurrentMap
+
+	return bsp:CreatePVS()
 end
 
-local oldLeaf
+local oldLeaf = nil
 
 ---------------------------------
 -- chicagoRPMinimap.IsOutside
@@ -113,7 +115,19 @@ end
 function chicagoRPMinimap.GetMapSize()
 	local bsp = NikNaks.CurrentMap
 
-	return bsp:GetBrushBounds()
+	return bsp:WorldMin(), bsp:WorldMax()
+end
+
+---------------------------------
+-- chicagoRPMinimap.GetStaticProps
+---------------------------------
+-- Desc:		Get all prop_statics in the current map.
+-- State:		Shared
+-- Returns:		Table - All prop_statics.
+function chicagoRPMinimap.GetStaticProps()
+	local bsp = NikNaks.CurrentMap
+
+	return bsp:GetStaticProps()
 end
 
 ---------------------------------

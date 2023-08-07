@@ -10,27 +10,27 @@
 -- Arg Five:	Bool - Whether to make the waypoint shared with friends or not.
 -- Arg Six:		Bool - Whether to make the waypoint permanent or not.
 function chicagoRPMinimap.CreateWaypoint(ply, name, pos, color, shared, permanent)
-	if !string.IsValid(name) then name = "Waypoint" end
-	if !shared then shared = false end
-	if !permanent then permanent = false end
+	if !string.IsValid(name) then name = "Waypoint" end -- Sets name to default if the name string is empty or nil. 
+	if !shared then shared = false end -- Defaults to unshared
+	if !permanent then permanent = false end -- Defaults to temporary
 
 	if !IsColor(color) then color = Color(color) end
-	if #name > 48 then name = string.Left(name, 48) end
+	if #name > 48 then name = string.Left(name, 48) end -- Limits name to 48 characters for SQL table.
 
 	local MapName = sql.SQLStr(chicagoRPMinimap.GetMapName())
 	local steamID = sql.SQLStr(ply:SteamID64())
-	local UUID = sql.SQLStr(chicagoRP.uuid())
+	local UUID = sql.SQLStr(chicagoRP.uuid()) -- Generates UUID.
 
-	if shared then
+	if shared then -- Add waypoint to serverside SQL table, and network to owner's friends.
 		sql.Begin()
 		sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Owner', 'Permanent', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. name .. "', '" .. UUID .. "', '" .. steamID .. "', '" .. tostring(tonumber(permanent)) .. "', '" .. MapName .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. color.r .. "', '" .. color.g .. "', '".. color.b .. "')")
 		sql.Commit()
 
 		chicagoRPMinimap.NetAddHandler(ply, name, UUID, steamID, permanent, pos.x, pos.y, pos.z, color.r, color.g, color.b)
 	elseif !shared and permanent then
-		chicagoRPMinimap.NetAddClientHandler(ply, name, true, pos.x, pos.y, pos.z, color.r, color.g, color.b)
+		chicagoRPMinimap.NetAddClientHandler(ply, name, true, pos.x, pos.y, pos.z, color.r, color.g, color.b) -- Adds waypoint to owner's clientside SQL table.
 	elseif !shared and !permanent then
-		chicagoRPMinimap.NetAddClientHandler(ply, name, false, pos.x, pos.y, pos.z, color.r, color.g, color.b)
+		chicagoRPMinimap.NetAddClientHandler(ply, name, false, pos.x, pos.y, pos.z, color.r, color.g, color.b) -- Adds waypoint to owner's clientside lua table.
 	end
 end
 
@@ -44,11 +44,11 @@ end
 -- Arg Three:	Color - The waypoint's color.
 -- Arg Four:	Bool - Whether to make the waypoint permanent or not.
 function chicagoRPMinimap.EditWaypoint(uuid, name, pos, color, permanent)
-	if !uuid or !string.IsValid(uuid) then return end
+	if !string.IsValid(uuid) then return end -- Checks if UUID string is empty or nil.
 
 	local SharedWaypoint = IsWaypointShared(uuid)
 
-	if !SharedWaypoint then return end
+	if !SharedWaypoint then return end -- This function only supports editing shared waypoints, not local ones.
 
 	local name = name or SharedWaypoint.Name
 	local PosX, PosY, PosZ = (pos.x, pos.y, pos.z) or (SharedWaypoint.PosX, SharedWaypoint.PosY, SharedWaypoint.PosZ)
@@ -67,7 +67,7 @@ end
 -- Arg One:		String - The UUID of the waypoint we want to delete.
 -- Arg Two:		Entity - The player that owns the waypoint, only required for non-shared waypoints.
 function chicagoRPMinimap.DeleteWaypoint(uuid, ply)
-	if !chicagoRPMinimap.IsWaypointOwner(ply, uuid) then return end
+	if !chicagoRPMinimap.IsWaypointOwner(ply, uuid) then return end -- You are not the owner, fuck off.
 
 	local steamID = ply:SteamID64()
 
@@ -75,8 +75,43 @@ function chicagoRPMinimap.DeleteWaypoint(uuid, ply)
 	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "' and 'Owner'='" .. sql.SQLStr(steamID) .. "'")
 	sql.Commit()
 
-	chicagoRPMinimap.NetRemoveHandler(ply, uuid)
-	chicagoRPMinimap.NetRemoveClientHandler(ply, uuid)
+	chicagoRPMinimap.NetRemoveHandler(ply, uuid) -- Removes waypoint from owner's and friends shared lua table. 
+	chicagoRPMinimap.NetRemoveClientHandler(ply, uuid) -- Removes waypoint from owner's clientside SQL/lua table.
+end
+
+---------------------------------
+-- chicagoRPMinimap.GetSharedWaypoints
+---------------------------------
+-- Desc:		Gets all of a players shared waypoints, does not include waypoints from friends.
+-- State:		Shared
+-- Arg One:		Entity - The player whose shared waypoints we want to get, or their SteamID64.
+-- Returns:		Table - All of the provided player's shared waypoints.
+function chicagoRPMinimap.GetSharedWaypoints(ply)
+	if !IsValid(ply) then return end
+
+	local steamID = ply:SteamID64()
+	local MapName = chicagoRPMinimap.GetMapName()
+	local waypoints = {}
+
+	sql.Begin()
+	local sharedWaypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "' AND 'Map'='" .. MapName .. "'")
+	sql.Commit()
+
+	for i = 1, #sharedWaypoints do
+		local waypoint = sharedWaypoints[i]
+
+		local newWaypoint = {}
+		newWaypoint.Name = waypoint.Name
+		newWaypoint.UUID = waypoint.UUID
+		newWaypoint.Owner = waypoint.Owner
+		newWaypoint.Permanent = waypoint.Permanent
+		newWaypoint.Pos = Vector(waypoint.PosX, waypoint.PosY, waypoint.PosZ)
+		newWaypoint.Color = Color(waypoint.ColorR, waypoint.ColorG, waypoint.ColorB)
+
+		waypoints[waypoint.UUID] = newWaypoint
+	end
+
+	return waypoints
 end
 
 ---------------------------------
@@ -93,7 +128,7 @@ function chicagoRPMinimap.IsWaypointOwner(ply, uuid)
 	local isOwner = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "' AND 'Owner'='" .. steamID)
 	sql.Commit()
 
-	return (!isOwner and false) or true -- We do it this way to account for local waypoints
+	return (!isOwner and false) or true -- We do it this way to account for local waypoints.
 end
 
 ---------------------------------
@@ -103,7 +138,7 @@ end
 -- State:		Server
 -- Arg One:		String - The UUID of the waypoint we want to check.
 local function IsWaypointShared(uuid)
-	if !uuid or !string.IsValid(uuid) then return end
+	if !string.IsValid(uuid) then return end -- Checks if UUID string is empty or nil.
 
 	sql.Begin()
 	local waypoint = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. UUID .. "'")
@@ -132,22 +167,23 @@ end)
 
 gameevent.Listen("player_disconnect")
 
-hook.Add("player_disconnect", "chicagoRP_minimap_removewaypoints", function(data)
-	local ply = Player(data.userid)
-	local steamID = ply:SteamID64()
+hook.Add("player_disconnect", "chicagoRP_minimap_clearwaypoints", function(data)
+	local ply = Player(data.userid) -- Gets disconnected player.
+	local steamID = ply:SteamID64() -- Disconnected player's SteamID64.
+	local MapName = chicagoRPMinimap.GetMapName()
 
 	sql.Begin()
 	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='" .. steamID .. "' AND 'Map'='" .. MapName .. "'")
 	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'Permanent'='0' AND 'Owner'='" .. steamID .. "'")
 	sql.Commit()
 
-	chicagoRPMinimap.NetRemoveHandler(ply, waypoints, #waypoints)
+	chicagoRPMinimap.NetRemoveHandler(ply, waypoints, #waypoints) -- Remove disconnected player's waypoints from their friends shared lua table(s).
 end)
 
 concommand.Add("chicagorp_minimap_transfertomap", function(ply, cmd, args)
-	if !ply:IsSuperAdmin() then return end
-	if !args or table.IsEmpty(args) then return end
-	if !args[2] then return end
+	if !ply:IsSuperAdmin() then return end -- You are not an admin, fuck off.
+	if !args or table.IsEmpty(args) then return end -- If no args, return end.
+	if !args[2] then return end -- If no second arg, return end.
 
 	local OriginalMap = args[1]
 	local NewMap = args[2]
@@ -156,7 +192,7 @@ concommand.Add("chicagorp_minimap_transfertomap", function(ply, cmd, args)
 	sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Map'='" .. NewMap .. "' WHERE 'Map'='" .. OriginalMap .. "'")
 	sql.Commit()
 
-	net.Start("chicagoRP_minimap_transferwaypoints") -- Clears all waypoints
+	net.Start("chicagoRP_minimap_transferwaypoints") -- Transfers all waypoints in players table to the new map, aka clears all lua tables and does SQL transfer.
 	net.WriteString(OriginalMap)
 	net.WriteString(NewMap)
 	net.Broadcast()

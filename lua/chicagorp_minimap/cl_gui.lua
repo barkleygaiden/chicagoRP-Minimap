@@ -11,6 +11,125 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
     end
 })
 
+-- OVERVIEW WORK (the dilla):
+-- How to hide all non-map entities?
+-- disabling area portals temporarily?
+-- does niknaks' clientside PVS actually show/hide entities?
+
+local pvs = nil
+local viewAngle = Angle(-90, 0, 0)
+
+local function GenerateMaterial(pos, w, h)
+    if !w then w = 512 end
+    if !h then h = 512 end
+
+    local mat = nil
+    local uuid = chicagoRP.uuid()
+
+    pvs:AddPVS(pos) -- Adds origin position to PVS
+
+    hook.Add("PostRender", uuid, function()   
+        local rt = GetRenderTargetEx(uuid, w, h, RT_SIZE_LITERAL, MATERIAL_RT_DEPTH_NONE, TEXTUREFLAGS_EIGHTBITALPHA, 0, IMAGE_FORMAT_RGBA8888)
+
+        render.PushRenderTarget(rt)
+        render.OverrideAlphaWriteEnable(true, true)
+        render.SetBlend(0) -- Hide entities (temporary solution, this also hides prop_static and prop_dynamic)
+        render.ClearDepth()
+        render.Clear(0, 0, 0, 0)
+
+		local view = {
+			origin = pos,
+			angles = viewAngle,
+			drawviewmodel = false,
+			x = 0, y = 0,
+			w = w, h = h
+		}
+
+		render.RenderView(view)
+
+        render.OverrideAlphaWriteEnable(false)
+        render.SetBlend(1) -- Unhide entities
+        render.PopRenderTarget()
+
+        mat = CreateMaterial(uuid, "VertexLitGeneric", {
+            ["$basetexture"] = "color/black",
+            ["$model"] = 1,
+            ["$translucent"] = 1
+        })
+
+        mat:SetTexture("$basetexture", rt)
+
+        hook.Remove("PostRender", uuid)
+    end)
+
+    pvs:RemovePVS(pos) -- Deletes origin position from PVS
+
+    return mat
+end
+
+local function DisablePropFade() -- we need niknaks for this, and have to read/edit the map lump
+	return {}
+end
+
+local function EnablePropFade() -- we need niknaks for this, and have to read/edit the map lump
+	return {}
+end
+
+local function GenerateChunkMaterials(...) -- Generates/Regenerates chunk materials
+	pvs = pvs or chicagoRPMinimap.CreatePVS()
+	local plyPos = LocalPlayer():GetPos()
+
+	pvs:AddPVS(plyPos) -- Adds player position to PVS
+
+	DisablePropFade() -- Disable static prop fade, this should be done right before material generation
+
+	for i = 1, #{} do -- Input table please
+		GenerateMaterial(pos)
+	end
+
+	pvs:RemovePVS(plyPos) -- Deletes player position from PVS, making it empty
+
+	EnablePropFade() -- Reenable static prop fade
+end
+
+local function CalculateRenderFOV(...) -- AKA, FOV of render.RenderView with the provided vector origin
+	-- what does this actually return?
+
+	-- needs to take the current view origin, then calculate how much we need to add or subtract from the surrounding vieworigin.z's 
+end
+
+local function FindLayers(pos) -- Find rooms that are underground, inside buildings, etc (aka, any sizable spot with a roof over it)
+	-- how does this find all sizable spots with ceilings over them without having false positives?
+
+	-- search across pos with chunk size for any sizable ceiling spots
+
+	-- use niknaks leaf functions?
+end
+
+local function CalculateChunks() -- Calculates render.RenderView positions, finds rooms with FindLayers, etc
+	local worldMin, worldMax = chicagoRPMinimap.GetMapSize()
+
+	local chunkCount = 0 -- We have to account for negative x/y maxs :vomit:
+
+	-- Start at leftmost and rightmost position
+	-- so lowest worldMin.x and lowest worldMax.y
+
+	-- Scenarios:
+	-- worldMin.x = 0, worldMin.y = -100, worldMax.x = 10, worldMax.y = 250
+	-- worldMin.x = -3453, worldMin.y = -9876, worldMax.x = 345, worldMax.y = 7658
+
+	-- One large problem is that changing a chunks vieworigin.z will
+	-- cause all surrounding chunks to intersect. As such, we need to
+	-- find way to index surrounding chunks
+
+	-- We should build chunks like so imo:
+	-- first chunk, then above, then right, repeat
+
+	for i = 0, chunkCount do
+		-- aaaaa
+	end
+end
+
 local function WaypointDropdown(parent, onwaypoint, mouseX, mouseY, uuid)
 	if !IsValid(parent) then return end
 
@@ -138,109 +257,8 @@ local function MinimapFrame()
     return motherFrame
 end
 
-local cameraOrigin = Vector(0, 0, 0)
-local plyPos = Vector(0, 0, 0)
-local originAdd = Vector(0, 10, 0)
-
-local function CreateOrigin(vect)
-	plyPos = vect
-	cameraOrigin = plyPos + originAdd
-end
-
-local cameraAngle = Angle(-90, 0, 0)
-
-local function MinimapPanel(parent)
-	if !IsValid(parent) then return end
-	local parentW, parentH = parent:GetSize()
-
-	local panel = vgui.Create("DPanel", parent)
-	panel:SetSize(parentW, parentH)
-	panel:Dock(BOTTOM)
-	panel:SetCursor("hand")
-
-	function panel:Init()
-		local plyPos = ply:GetPos()
-
-		CreateOrigin(plyPos)
-		self.originX = plyPos.x
-		self.originY = plyPos.y
-	end
-
-	function panel:Paint(w, h)
-		local x, y = self:GetPos()
-
-		local old = DisableClipping(true) -- Avoid issues introduced by the natural clipping of Panel rendering
-		render.SetBlend(0) -- Hide entities
-
-		render.RenderView({
-			origin = cameraOrigin,
-			angles = cameraAngle,
-			drawviewmodel = false,
-			x = x, y = y,
-			w = w, h = h
-		})
-
-		render.SetBlend(1) -- Unhide entities
-		DisableClipping(old)
-	end
-
-	function panel:OnMousePressed(mousecode)
-		local mouseX, mouseY = gui.MouseX(), gui.MouseY() -- Position before dragging starts
-
-		if mousecode == MOUSE_LEFT then
-			self.cursorX, self.cursorY = mouseX, mouseY
-
-			self:MouseCapture(true)
-			self:CaptureMouse()
-		elseif mousecode == MOUSE_RIGHT then
-			WaypointDropdown(panel, false, mouseX, mouseY)
-		end
-	end
-
-	function panel:OnMouseReleased(mousecode)
-		self:MouseCapture(false)
-	end
-
-	function panel:CaptureMouse()
-		local x, y = input.GetCursorPos() -- New cursor position
-		local newX = x - self.originX -- Gets new horizontal value
-		local newY = y - self.originY -- Gets new vertical value
-
-		cameraOrigin.x = cameraOrigin.x + newX -- Moves origin
-		cameraOrigin.y = cameraOrigin.y + newY -- Moves origin
-
-		input.SetCursorPos(self.originX, self.originY) -- Recenters cursor at the original position
-	end
-
-	local mapMin, mapMax = chicagoRPMinimap.GetMapSize()
-
-	function panel:OnMouseWheeled(delta)
-		local calcZ = cameraOrigin.z + (delta * -1)
-
-		cameraOrigin.z = math.Clamp(calcZ, mapMin.z, mapMax.z)
-
-		self.traceHeight = cameraOrigin.z
-	end
-
-	chicagoRPMinimap.OpenMapPanel = panel
-
-	return panel
-end
-
-local NextMove = 0
-
-hook.Add("FinishMove", "chicagoRP_minimap_move", function(ply, mv)
-	local time = CurTime()
-
-	if !IsMapOpen or (NextMove or 0) >= time then return end
-
-	CreateOrigin(mv:GetOrigin())
-
-	NextMove = time + 0.5
-end
-
 hook.Add("PostDrawOpaqueRenderables", "chicagoRP_minimap_waypointdraw", function()
-	-- need waypoint table :(
+	-- how to translate world vector coords to 2d screen coords?
 end)
 
 local function OpenMinimap()
