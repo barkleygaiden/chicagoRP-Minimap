@@ -14,7 +14,7 @@ list.Set("DesktopWindows", "chicagoRP Minimap", {
 -- OVERVIEW WORK (the dilla):
 -- How to hide all non-map entities?
 -- disabling area portals temporarily?
--- does niknaks' clientside PVS actually show/hide entities?
+-- does niknaks' clientside PVS actually show/hide entities? (i think it does)
 
 local pvs = nil
 local viewAngle = Angle(-90, 0, 0)
@@ -121,12 +121,15 @@ local function CalculateChunks() -- Calculates render.RenderView positions, find
 
 	-- One large problem is that changing a chunks vieworigin.z will
 	-- cause all surrounding chunks to intersect. As such, we need to
-	-- find way to index surrounding chunks
+	-- find way to index surrounding chunks.
+
+	-- However, this can probably lead to an infinite loop? Not to mention
+	-- the computational expense.
 
 	-- We should build chunks like so imo:
 	-- first chunk, then above, then right, repeat
 
-	for i = 0, chunkCount do
+	for i = 0, chunkCount do -- repeat until or while?
 		-- aaaaa
 	end
 end
