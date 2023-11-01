@@ -43,8 +43,10 @@ local function AddPermanentWaypoint(name, pos, color, uuid)
 
 	if IsColor(color) then r, g, b = color:Unpack() end
 
+	local insertQuery = string.concat("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('", sql.SQLStr(name), "', '", UUID, "', '", MapName, "', '", pos.x, "', '", pos.y, "', '", pos.z, "', '", r, "', '", g, "', '", b, "')")
+
 	sql.Begin()
-	sql.Query("INSERT INTO `chicagoRPMinimap_Waypoints`('Name', 'UUID', 'Map', 'PosX', 'PosY', 'PosZ', 'ColorR', 'ColorG', 'ColorB') VALUES ('" .. sql.SQLStr(name) .. "', '" .. UUID .. "', '" .. MapName .. "', '" .. pos.x .. "', '" .. pos.y .. "', '" .. pos.z .. "', '" .. r .. "', '" .. g .. "', '".. b .. "')")
+	sql.Query(insertQuery)
 	sql.Commit()
 
 	local waypoint = {}
@@ -168,8 +170,10 @@ function chicagoRPMinimap.DeleteWaypoint(uuid)
 		local isPermanent = chicagoRPMinimap.IsWaypointPermanent(uuid)
 
 		if isPermanent then
+			local deleteQuery = string.concat("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='", sql.SQLStr(uuid), "'")
+
 			sql.Begin()
-			sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+			sql.Query(deleteQuery)
 			sql.Commit()
 		end
 
@@ -323,8 +327,10 @@ function chicagoRPMinimap.SetName(uuid, name)
 	waypoint.Name = name
 
 	if isLocalPermanent then
+		local updateQuery = string.concat("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='", sql.SQLStr(name), "' WHERE 'UUID'='", sql.SQLStr(uuid), "'")
+
 		sql.Begin()
-		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Name'='" .. sql.SQLStr(name) .. "' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+		sql.Query(updateQuery)
 		sql.Commit()
 	elseif isShared then
 		NetEditValueHandler(uuid, waypoint)
@@ -349,8 +355,10 @@ function chicagoRPMinimap.SetPos(uuid, pos)
 	waypoint.Pos = pos
 
 	if isLocalPermanent then
+		local updateQuery = string.concat("UPDATE 'chicagoRPMinimap_Waypoints' SET 'PosX'='", pos.x, "', 'PosY='", pos.y, "', 'PosZ'='", pos.z, "' WHERE 'UUID'='", sql.SQLStr(uuid), "'")
+
 		sql.Begin()
-		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'PosX'='" .. pos.x .. "', 'PosY='" .. pos.y .. "', 'PosZ'='" .. pos.z .. "' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+		sql.Query(updateQuery)
 		sql.Commit()
 	elseif isShared then
 		NetEditValueHandler(uuid, waypoint)
@@ -375,8 +383,10 @@ function chicagoRPMinimap.SetColor(uuid, color)
 	waypoint.Color = color
 
 	if isLocalPermanent then
+		local updateQuery = string.concat("UPDATE 'chicagoRPMinimap_Waypoints' SET 'ColorR'='", color.r, "', 'ColorG='", color.g, "', 'ColorB'='", color.b, "' WHERE 'UUID'='", sql.SQLStr(uuid), "'")
+
 		sql.Begin()
-		sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'ColorR'='" .. color.r .. "', 'ColorG='" .. color.g .. "', 'ColorB'='" .. color.b .. "' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+		sql.Query(updateQuery)
 		sql.Commit()
 	elseif isShared then
 		NetEditValueHandler(uuid, waypoint)
@@ -462,7 +472,7 @@ function chicagoRPMinimap.ShortenWaypointName(str)
 		local word = string.upper(exploded[i]) -- Uppercase each word.
 		local letter = string.Left(letter, 2) -- Only keep the first letter of each word.
 
-		shortstr = shortstr .. letter
+		shortstr = shortstr, letter
 	end
 
 	return shortstr
@@ -471,9 +481,12 @@ end
 hook.Add("InitPostEntity", "chicagoRP_minimap_init", function()
 	local MapName = chicagoRPMinimap.GetMapName()
 
+	local selectQuery = string.concat("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='", MapName, "'")
+
 	sql.Begin()
-	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96), 'Map' VARCHAR(32), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. MapName .. "'") -- Get waypoints
+	sql.Query("CREATE TABLE IF NOT EXISTS 'chicagoRPMinimap_Waypoints'('Name' VARCHAR(48), 'UUID' VARCHAR(96) PRIMARY KEY, 'Map' VARCHAR(32), 'PosX' FLOAT(8) NOT NULL, 'PosY' FLOAT(8) NOT NULL, 'PosZ' FLOAT(8) NOT NULL, 'ColorR' TINYINT(3) UNSIGNED, 'ColorG' TINYINT(3) UNSIGNED, 'ColorB' TINYINT(3) UNSIGNED)")
+	sql.Query("CREATE INDEX IF NOT EXISTS 'chicagoRP_Minimap_Waypoints' ON 'chicagoRPMinimap_Waypoints' ('Map')")
+	local waypoints = sql.Query(selectQuery) -- Get waypoints
 	sql.Commit()
 
 	if !waypoints then return end -- Return end if we have no waypoints, or if an SQL error occured.

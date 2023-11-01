@@ -28,12 +28,15 @@ net.Receive("chicagoRP_minimap_fetchwaypoints", function(len)
 end)
 
 net.Receive("chicagoRP_minimap_transferwaypoints", function(len)
-	local OriginalMap = net.ReadString()
-	local NewMap = net.ReadString()
+	local originalMap = net.ReadString()
+	local newMap = net.ReadString()
+
+	local selectQuery = string.concat("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='", originalMap, "'")
+	local updateQuery = string.concat("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Map'='", newMap, "' WHERE 'Map'='", originalMap, "'")
 
 	sql.Begin()
-	local waypoints = sql.Query("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Map'='" .. OriginalMap .. "'")
-	sql.Query("UPDATE 'chicagoRPMinimap_Waypoints' SET 'Map'='" .. NewMap .. "' WHERE 'Map'='" .. OriginalMap .. "'")
+	local waypoints = sql.Query(selectQuery)
+	sql.Query(updateQuery)
 	sql.Commit()
 
 	chicagoRPMinimap.SharedWaypoints = {} -- Clears shared lua table.
@@ -52,8 +55,10 @@ local function QuickDelete(uuid)
 	LocalTable[UUID] = nil
 	SharedTable[UUID] = nil
 
+	local deleteQuery = string.concat("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='", sql.SQLStr(uuid), "'")
+
 	sql.Begin()
-	sql.Query("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'UUID'='" .. sql.SQLStr(uuid) .. "'")
+	sql.Query(deleteQuery)
 	sql.Commit()
 end
 
