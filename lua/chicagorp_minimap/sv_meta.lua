@@ -17,7 +17,7 @@ function chicagoRPMinimap.CreateWaypoint(ply, name, pos, color, shared, permanen
 	if !IsColor(color) then color = Color(color) end
 	if #name > 48 then name = string.Left(name, 48) end -- Limits name to 48 characters for SQL table.
 
-	local MapName = sql.SQLStr(chicagoRPMinimap.GetMapName())
+	local MapName = sql.SQLStr(chicagoRP.GetMapName())
 	local steamID = sql.SQLStr(ply:SteamID64())
 	local UUID = sql.SQLStr(chicagoRP.uuid()) -- Generates UUID.
 
@@ -95,7 +95,7 @@ function chicagoRPMinimap.GetSharedWaypoints(ply)
 	if !IsValid(ply) then return end
 
 	local steamID = ply:SteamID64()
-	local MapName = chicagoRPMinimap.GetMapName()
+	local MapName = chicagoRP.GetMapName()
 	local waypoints = {}
 
 	local selectQuery = string.concat("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='", steamID, "' AND 'Map'='", MapName, "'")
@@ -166,7 +166,7 @@ end)
 
 hook.Add("PlayerInitialSpawn", "chicagoRP_minimap_sendwaypoints", function(ply, transition)
 	local steamID = ply:SteamID64()
-	local MapName = chicagoRPMinimap.GetMapName()
+	local MapName = chicagoRP.GetMapName()
 
 	timer.Simple(1, function() -- delayed because this can overflow client net channel
 		if !IsValid(ply) then return end
@@ -186,7 +186,7 @@ gameevent.Listen("player_disconnect")
 hook.Add("player_disconnect", "chicagoRP_minimap_clearwaypoints", function(data)
 	local ply = Player(data.userid) -- Gets disconnected player.
 	local steamID = ply:SteamID64() -- Disconnected player's SteamID64.
-	local MapName = chicagoRPMinimap.GetMapName()
+	local MapName = chicagoRP.GetMapName()
 
 	local selectQuery = string.concat("SELECT * FROM 'chicagoRPMinimap_Waypoints' WHERE 'Owner'='", steamID, "' AND 'Map'='", MapName, "'")
 	local deleteQuery = string.concat("DELETE FROM 'chicagoRPMinimap_Waypoints' WHERE 'Permanent'='0' AND 'Owner'='", steamID, "'")

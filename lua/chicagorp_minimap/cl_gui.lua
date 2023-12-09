@@ -76,7 +76,7 @@ local function EnablePropFade() -- we need niknaks for this, and have to read/ed
 end
 
 local function GenerateChunkMaterials(...) -- Generates/Regenerates chunk materials
-	pvs = pvs or chicagoRPMinimap.CreatePVS()
+	pvs = pvs or chicagoRP.CreatePVS()
 	local plyPos = LocalPlayer():GetPos()
 
 	pvs:AddPVS(plyPos) -- Adds player position to PVS
@@ -107,7 +107,7 @@ local function FindLayers(pos) -- Find rooms that are underground, inside buildi
 end
 
 local function CalculateChunks() -- Calculates render.RenderView positions, finds rooms with FindLayers, etc
-	local worldMin, worldMax = chicagoRPMinimap.GetMapSize()
+	local worldMin, worldMax = chicagoRP.GetMapSize()
 
 	local chunkCount = 0 -- We have to account for negative x/y maxs :vomit:
 

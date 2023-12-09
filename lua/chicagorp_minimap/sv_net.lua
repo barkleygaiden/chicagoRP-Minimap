@@ -91,7 +91,7 @@ net.Receive("chicagoRP_minimap_waypoint", function(len, ply)
     local steamID = ply:SteamID64()
 
     if actionType == 1 or actionType == 2 then -- Create/Edit waypoint.
-        local MapName = sql.SQLStr(chicagoRPMinimap.GetMapName())
+        local MapName = sql.SQLStr(chicagoRP.GetMapName())
         local name = sql.SQLStr(net.ReadString()) -- Reads name (String)
         local PosX, PosY, PosZ = chicagoRPMinimap.ReadVector() -- Reads position (Floats)
         local r, g, b = chicagoRPMinimap.ReadColor() -- Reads color (Ints)
@@ -143,7 +143,7 @@ net.Receive("chicagoRP_minimap_editwaypoint", function(len, ply)
 
     local steamID = ply:SteamID64()
 
-    local MapName = chicagoRPMinimap.GetMapName()
+    local MapName = chicagoRP.GetMapName()
     local name = sql.SQLStr(net.ReadString()) -- Reads name (String)
     local PosX, PosY, PosZ = chicagoRPMinimap.ReadVector() -- Reads position (Floats)
     local r, g, b = chicagoRPMinimap.ReadColor() -- Reads color (Ints)

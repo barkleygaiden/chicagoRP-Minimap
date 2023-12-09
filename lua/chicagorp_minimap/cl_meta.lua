@@ -37,7 +37,7 @@ local function AddLocalWaypoint(name, pos, color, uuid)
 end
 
 local function AddPermanentWaypoint(name, pos, color, uuid)
-	local MapName = chicagoRPMinimap.GetMapName()
+	local MapName = chicagoRP.GetMapName()
 	local UUID = uuid or chicagoRP.uuid() -- Generates UUID if we dont specify one already
 	local r, g, b = color
 
@@ -423,7 +423,7 @@ local endPos = Vector(0, 0, -32768)
 function chicagoRPMinimap.LocaltoWorld(x, y)
 	local panel = chicagoRPMinimap.OpenMapPanel
 
-	chicagoRPMinimap.ResetVector(startPos)
+	startPos:Zero()
 
 	local mx, my = panel:ScreenToLocal(x, y) -- Pass the mouse into the panel coordinates
 
